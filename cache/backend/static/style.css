@@ -1,0 +1,47 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+header { text-align: center; margin-bottom: 2.5rem; }
+header h1 { font-size: 1.8rem; color: #38bdf8; }
+.subtitle { color: #94a3b8; margin-top: .4rem; }
+main { max-width: 860px; margin: 0 auto; display: grid; gap: 1.5rem; }
+.card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 1.4rem 1.6rem;
+}
+.card h2 { font-size: 1.1rem; color: #7dd3fc; margin-bottom: .5rem; }
+.hint { font-size: .85rem; color: #94a3b8; margin-bottom: .8rem; }
+.hint code { background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #f0abfc; }
+button {
+  background: #0ea5e9;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: .45rem 1.1rem;
+  cursor: pointer;
+  font-size: .88rem;
+  margin-right: .5rem;
+  margin-bottom: .6rem;
+  transition: background .15s;
+}
+button:hover { background: #38bdf8; }
+button.danger { background: #ef4444; }
+button.danger:hover { background: #f87171; }
+pre {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: .8rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  color: #a3e635;
+  min-height: 3rem;
+}
