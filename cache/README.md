@@ -1,7 +1,7 @@
 
 # Praktikum: Web Server Caching dengan Nginx
 
-**Mata Kuliah** : Sistem Komputasi Terdistribusi  
+
 **Topik**       : Caching — Browser Cache, Proxy Cache, Conditional Request  
 **Prasyarat**   : Nginx 1.24 sudah terinstal, Python 3.10+  
 
