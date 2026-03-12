@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cache Demo — Praktikum Nginx</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>🗂️ Nginx Cache — Demo Interaktif</h1>
+    <p class="subtitle">Klik tombol, perhatikan header & counter untuk memahami cara kerja cache</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Statistik Backend</h2>
+      <p class="hint">Counter ini menunjukkan berapa kali request benar-benar sampai ke backend (melewati cache).</p>
+      <button onclick="fetchCounter()">🔄 Refresh Counter</button>
+      <button onclick="resetCounter()" class="danger">🗑️ Reset Counter</button>
+      <pre id="counter-output">—</pre>
+    </section>
+
+    <section class="card">
+      <h2>Eksperimen 1 — Tanpa Cache</h2>
+      <p class="hint">Header: <code>Cache-Control: no-store</code> — setiap request pasti sampai ke backend.</p>
+      <button onclick="fetchEndpoint('/api/nocache', 'nocache-out')">Kirim Request</button>
+      <pre id="nocache-out">—</pre>
+    </section>
+
+    <section class="card">
+      <h2>Eksperimen 2 — Cache-Control max-age</h2>
+      <p class="hint">Header: <code>Cache-Control: public, max-age=30</code> — cache valid 30 detik.</p>
+      <button onclick="fetchEndpoint('/api/cacheable', 'cacheable-out')">Kirim Request</button>
+      <pre id="cacheable-out">—</pre>
+    </section>
+
+    <section class="card">
+      <h2>Eksperimen 3 — ETag</h2>
+      <p class="hint">Header: <code>ETag</code> — browser mengirim <code>If-None-Match</code> saat revalidasi.</p>
+      <button onclick="fetchEndpoint('/api/etag', 'etag-out')">Kirim Request</button>
+      <pre id="etag-out">—</pre>
+    </section>
+
+    <section class="card">
+      <h2>Eksperimen 4 — Last-Modified</h2>
+      <p class="hint">Header: <code>Last-Modified</code> — browser mengirim <code>If-Modified-Since</code>.</p>
+      <button onclick="fetchEndpoint('/api/lastmod', 'lastmod-out')">Kirim Request</button>
+      <pre id="lastmod-out">—</pre>
+    </section>
+
+    <section class="card">
+      <h2>Eksperimen 5 — Endpoint Lambat + Proxy Cache</h2>
+      <p class="hint">Request pertama ~1.5 detik. Setelah nginx cache aktif, respons instan.</p>
+      <button onclick="fetchTimed('/api/slow', 'slow-out')">Kirim Request (ukur waktu)</button>
+      <pre id="slow-out">—</pre>
+    </section>
+  </main>
+
+  <script>
+    async function fetchEndpoint(url, outputId) {
+      document.getElementById(outputId).textContent = "Memuat…";
+      try {
+        const r = await fetch(url);
+        const headers = {};
+        for (const [k, v] of r.headers.entries()) headers[k] = v;
+        const body = await r.json();
+        document.getElementById(outputId).textContent =
+          `HTTP ${r.status}\n\n— Headers —\n${JSON.stringify(headers, null, 2)}\n\n— Body —\n${JSON.stringify(body, null, 2)}`;
+      } catch(e) { document.getElementById(outputId).textContent = "Error: " + e; }
+    }
+
+    async function fetchTimed(url, outputId) {
+      document.getElementById(outputId).textContent = "Memuat… (mungkin lambat)";
+      const t0 = performance.now();
+      try {
+        const r = await fetch(url);
+        const elapsed = (performance.now() - t0).toFixed(0);
+        const body = await r.json();
+        const xCache = r.headers.get("x-cache") || r.headers.get("x-nginx-cache") || "—";
+        document.getElementById(outputId).textContent =
+          `⏱  Waktu respons: ${elapsed} ms\nX-Cache: ${xCache}\n\n${JSON.stringify(body, null, 2)}`;
+      } catch(e) { document.getElementById(outputId).textContent = "Error: " + e; }
+    }
+
+    async function fetchCounter() {
+      const r = await fetch("/api/counter");
+      const body = await r.json();
+      document.getElementById("counter-output").textContent = JSON.stringify(body, null, 2);
+    }
+
+    async function resetCounter() {
+      const r = await fetch("/api/reset");
+      const body = await r.json();
+      document.getElementById("counter-output").textContent = JSON.stringify(body, null, 2);
+    }
+  </script>
+</body>
+</html>
