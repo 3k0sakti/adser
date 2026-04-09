@@ -16,7 +16,7 @@
 1. Kerjakan semua soal secara berurutan.
 2. Setiap konfigurasi file harus disimpan di dalam direktori kerja yang sudah ditentukan.
 3. Gunakan Docker dan Docker Compose untuk semua implementasi.
-4. Screenshot **setiap hasil pengujian** dan sertakan dalam laporan singkat (file `laporan.pdf/laporan.md`).
+4. Screenshot **setiap hasil pengujian** dan sertakan dalam laporan singkat (file `laporan.pdf/laporan.md` dan zip).
 5. Pastikan semua container berjalan (status `Up`) saat penilaian berlangsung.
 6. Direktori kerja: `~/uts-adser/<NIM>/`
 
