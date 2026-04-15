@@ -1,0 +1,42 @@
+groups:
+  - name: webserver_alerts
+    interval: 30s
+    rules:
+
+      # Alert when a web server is unreachable (scrape fails)
+      - alert: WebServerDown
+        expr: up{job=~"webserver.*"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Web server {{ $labels.job }} is DOWN"
+          description: "Prometheus cannot scrape {{ $labels.job }} ({{ $labels.instance }}) for more than 30 seconds."
+
+      # Alert when error rate exceeds 10%
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{http_status=~"5.."}[2m])
+            /
+            rate(http_requests_total[2m])
+          ) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.server }}"
+          description: "Error rate on {{ $labels.server }} is {{ $value | humanizePercentage }} over the last 2 minutes."
+
+      # Alert when P95 latency exceeds 2 seconds
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High P95 latency on {{ $labels.server }}"
+          description: "P95 latency on {{ $labels.server }} is {{ $value | humanizeDuration }} (threshold: 2s)."

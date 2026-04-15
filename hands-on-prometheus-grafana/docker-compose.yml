@@ -1,0 +1,111 @@
+version: '3.8'
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+services:
+
+  # ─── Web Server 1 ────────────────────────────────────────────────────────────
+  webserver1:
+    build: ./webserver1
+    container_name: webserver1
+    ports:
+      - "5001:5000"
+    networks:
+      - monitoring
+    restart: unless-stopped
+    labels:
+      - "description=Web Server 1 - Flask app with Prometheus metrics"
+
+  # ─── Web Server 2 ────────────────────────────────────────────────────────────
+  webserver2:
+    build: ./webserver2
+    container_name: webserver2
+    ports:
+      - "5002:5000"
+    networks:
+      - monitoring
+    restart: unless-stopped
+    labels:
+      - "description=Web Server 2 - Flask app with Prometheus metrics"
+
+  # ─── Prometheus ──────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - webserver1
+      - webserver2
+
+  # ─── Grafana ─────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_DOMAIN=localhost
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # ─── Traffic Generator ───────────────────────────────────────────────────────
+  traffic-generator:
+    image: alpine:3.19
+    container_name: traffic-generator
+    networks:
+      - monitoring
+    depends_on:
+      - webserver1
+      - webserver2
+    restart: unless-stopped
+    command: >
+      sh -c "
+        apk add --no-cache curl > /dev/null 2>&1 &&
+        echo '>>> Traffic generator started. Sending requests to webserver1 and webserver2...' &&
+        while true; do
+          curl -sf http://webserver1:5000/          > /dev/null
+          curl -sf http://webserver1:5000/health    > /dev/null
+          curl -sf http://webserver1:5000/api/data  > /dev/null
+          curl -sf http://webserver1:5000/slow      > /dev/null
+          curl -sf http://webserver1:5000/error     > /dev/null 2>&1 || true
+
+          curl -sf http://webserver2:5000/          > /dev/null
+          curl -sf http://webserver2:5000/health    > /dev/null
+          curl -sf http://webserver2:5000/api/users > /dev/null
+          curl -sf http://webserver2:5000/api/products > /dev/null
+          curl -sf http://webserver2:5000/slow      > /dev/null
+          curl -sf http://webserver2:5000/error     > /dev/null 2>&1 || true
+
+          sleep 2
+        done
+      "

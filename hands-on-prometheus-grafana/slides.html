@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitoring dengan Prometheus &amp; Grafana | Administrasi Server</title>
+
+  <!-- Reveal.js CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" />
+  <!-- Highlight.js untuk code blocks -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css" />
+
+  <style>
+    /* ── Warna utama ── */
+    :root {
+      --accent:   #e6522c;   /* oranye Prometheus */
+      --accent2:  #f5a623;   /* kuning Grafana */
+      --accent3:  #4fc3f7;   /* biru info */
+      --bg-dark:  #1a1a2e;
+      --bg-card:  rgba(255,255,255,0.06);
+      --border:   rgba(255,255,255,0.12);
+    }
+
+    /* ── Base font: scale dengan Reveal.js canvas ── */
+    .reveal { font-family: 'Segoe UI', Arial, sans-serif; font-size: 28px; }
+
+    /* ── Title slide ── */
+    .slide-title { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+    .slide-title h1 { font-size: 2em; color: var(--accent2); margin-bottom: .2em; }
+    .slide-title .subtitle { font-size: 1em; color: #aaa; }
+    .slide-title .badge {
+      display: inline-block; margin: .15em .3em;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 20px; padding: .2em .8em; font-size: .75em; color: #ccc;
+    }
+
+    /* ── Section header slide ── */
+    .slide-section { background: linear-gradient(135deg, #0f3460 0%, #16213e 100%); }
+    .slide-section .section-number {
+      font-size: 4em; font-weight: 900; opacity: .15;
+      position: absolute; top: .1em; right: .3em;
+    }
+    .slide-section h2 { font-size: 2em; color: var(--accent2); }
+
+    /* ── Kartu info ── */
+    .cards { display: flex; gap: 1em; flex-wrap: wrap; justify-content: center; margin-top: .8em; }
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: .9em 1.1em; flex: 1; min-width: 160px; max-width: 220px;
+      text-align: left;
+    }
+    .card h4 { margin: 0 0 .4em; color: var(--accent2); font-size: .9em; }
+    .card p  { margin: 0; font-size: .75em; color: #ccc; line-height: 1.55; }
+
+    /* ── Tabel ── */
+    .reveal table { font-size: .78em; width: 100%; border-collapse: collapse; }
+    .reveal table th { background: rgba(230,82,44,.25); color: var(--accent2); padding: .45em .75em; }
+    .reveal table td { padding: .4em .75em; border-bottom: 1px solid var(--border); color: #ddd; }
+    .reveal table tr:hover td { background: rgba(255,255,255,.04); }
+
+    /* ── Code block override ── */
+    .reveal pre { font-size: .7em; border-radius: 8px; }
+    .reveal code { font-size: .92em; }
+
+    /* ── Highlight box ── */
+    .hbox {
+      background: rgba(230,82,44,.15); border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0; padding: .65em 1em; margin: .5em 0;
+      font-size: .82em; color: #f0d9d3;
+    }
+    .hbox-blue {
+      background: rgba(79,195,247,.12); border-left: 4px solid var(--accent3);
+      border-radius: 0 8px 8px 0; padding: .65em 1em; margin: .5em 0;
+      font-size: .82em; color: #d0eeff;
+    }
+    .hbox-green {
+      background: rgba(100,221,23,.12); border-left: 4px solid #64dd17;
+      border-radius: 0 8px 8px 0; padding: .65em 1em; margin: .5em 0;
+      font-size: .82em; color: #cfffbc;
+    }
+
+    /* ── Diagram ASCII styled ── */
+    .diagram {
+      background: #0d1117; border: 1px solid var(--border); border-radius: 8px;
+      padding: .8em 1.2em; font-family: monospace; font-size: .72em;
+      color: #7ee787; text-align: left; white-space: pre; overflow: auto;
+    }
+
+    /* ── Flow steps ── */
+    .steps { list-style: none; padding: 0; margin: .5em 0; }
+    .steps li {
+      display: flex; align-items: flex-start; gap: .6em;
+      padding: .5em 0; border-bottom: 1px solid var(--border); font-size: .82em; color: #ddd;
+    }
+    .steps li:last-child { border-bottom: none; }
+    .step-num {
+      min-width: 28px; height: 28px; border-radius: 50%;
+      background: var(--accent); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .85em; flex-shrink: 0;
+    }
+
+    /* ── Tag badge ── */
+    .tag {
+      display: inline-block; background: rgba(245,166,35,.2);
+      color: var(--accent2); border: 1px solid rgba(245,166,35,.4);
+      border-radius: 4px; padding: .06em .5em; font-size: .65em; font-weight: 600;
+      vertical-align: middle; margin: .1em;
+    }
+    .tag-red   { background: rgba(230,82,44,.2); color: #ff8a65; border-color: rgba(230,82,44,.4); }
+    .tag-blue  { background: rgba(79,195,247,.2); color: #4fc3f7; border-color: rgba(79,195,247,.4); }
+    .tag-green { background: rgba(100,221,23,.2); color: #b2ff59; border-color: rgba(100,221,23,.4); }
+
+    /* ── Two-column layout ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; margin-top: .6em; }
+    .two-col-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 1.2em; margin-top: .6em; }
+
+    /* ── Metric type display ── */
+    .metric-row {
+      display: flex; align-items: center; gap: .7em;
+      padding: .45em 0; border-bottom: 1px solid var(--border); font-size: .8em;
+    }
+    .metric-name { font-family: monospace; color: #ff8a65; font-weight: 600; min-width: 90px; }
+    .metric-desc { color: #ccc; flex: 1; }
+
+    /* ── Agendas ── */
+    .agenda { list-style: none; padding: 0; margin: .5em auto; max-width: 600px; }
+    .agenda li {
+      padding: .6em .9em; border-radius: 8px; margin: .35em 0;
+      background: var(--bg-card); border: 1px solid var(--border);
+      font-size: .88em; color: #ddd; display: flex; align-items: center; gap: .7em;
+    }
+    .agenda li .num {
+      background: var(--accent); color: white; border-radius: 50%;
+      width: 24px; height: 24px; display: flex; align-items: center;
+      justify-content: center; font-size: .78em; font-weight: 700; flex-shrink: 0;
+    }
+    .agenda li.active { background: rgba(245,166,35,.12); border-color: rgba(245,166,35,.4); color: #fff; }
+    .agenda li.active .num { background: var(--accent2); }
+
+    /* ── Utils ── */
+    .mt { margin-top: .7em; }
+    .text-muted { color: #888; font-size: .78em; }
+    .text-accent { color: var(--accent2); }
+    .text-red    { color: #ff7043; }
+    .text-blue   { color: #4fc3f7; }
+    .reveal h2 { font-size: 1.5em; }
+    .reveal h3 { font-size: 1.15em; color: #eee; }
+    .small { font-size: .75em; color: #aaa; }
+
+    /* ── Port table ── */
+    .port-pill {
+      display: inline-block; background: rgba(79,195,247,.15); color: var(--accent3);
+      border: 1px solid rgba(79,195,247,.3); border-radius: 6px;
+      padding: .05em .5em; font-family: monospace; font-size: .9em;
+    }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ─────────────────────────────────────────────────────────────────────────
+     TITLE
+───────────────────────────────────────────────────────────────────────────── -->
+<section class="slide-title" data-background-gradient="linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)">
+  <h1>Monitoring Server</h1>
+  <p style="font-size:1.1em; color:#e6522c; font-weight:600; margin:.3em 0 .6em">
+    SNMP &rarr; Prometheus &rarr; Grafana
+  </p>
+  <p class="subtitle">Hands-On Lab &mdash; Administrasi Server</p>
+  <div style="margin-top:1em">
+    <span class="badge">Docker</span>
+    <span class="badge">Flask</span>
+    <span class="badge">Prometheus</span>
+    <span class="badge">Grafana</span>
+    <span class="badge">SNMP</span>
+  </div>
+  <p style="margin-top:1.2em; font-size:.6em; color:#666">
+    Universitas Brawijaya &bull; 2025/2026
+  </p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────────
+     AGENDA
+───────────────────────────────────────────────────────────────────────────── -->
+<section>
+  <h2>Agenda</h2>
+  <ul class="agenda">
+    <li><span class="num">1</span> Konsep Monitoring &amp; Observability</li>
+    <li><span class="num">2</span> SNMP &mdash; Simple Network Management Protocol</li>
+    <li><span class="num">3</span> Prometheus &mdash; Metrics Collection</li>
+    <li><span class="num">4</span> Grafana &mdash; Visualisasi Dashboard</li>
+    <li><span class="num">5</span> Arsitektur Lab Hands-On</li>
+    <li><span class="num">6</span> Demo &amp; Praktikum</li>
+    <li><span class="num">7</span> PromQL &amp; Alerting</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 1 — MONITORING & OBSERVABILITY
+═══════════════════════════════════════════════════════════════════════════ -->
+<section class="slide-section">
+  <div class="section-number">01</div>
+  <h2>Monitoring &amp;<br>Observability</h2>
+  <p class="text-muted">Mengapa kita perlu memantau server?</p>
+</section>
+
+<section>
+  <h2>Apa itu Monitoring?</h2>
+  <div class="hbox-blue">
+    Monitoring adalah proses <strong>mengumpulkan, mencatat, dan menganalisis</strong>
+    data dari sistem/layanan secara berkelanjutan untuk memastikan ketersediaan dan
+    performa yang optimal.
+  </div>
+  <div class="cards mt">
+    <div class="card">
+      <h4>Deteksi Masalah</h4>
+      <p>Mengetahui ketika server atau layanan mengalami gangguan sebelum pengguna melaporkan</p>
+    </div>
+    <div class="card">
+      <h4>Kapasitas</h4>
+      <p>Merencanakan kebutuhan sumber daya (CPU, RAM, disk) berdasarkan tren historis</p>
+    </div>
+    <div class="card">
+      <h4>Performa</h4>
+      <p>Mengidentifikasi bottleneck dan mengoptimalkan respons waktu aplikasi</p>
+    </div>
+    <div class="card">
+      <h4>Keamanan</h4>
+      <p>Mendeteksi pola akses anomali dan serangan potensial</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Tiga Pilar Observability</h2>
+  <div class="cards">
+    <div class="card" style="max-width:260px; border-color: rgba(230,82,44,.5)">
+      <h4 style="color:#ff8a65">Metrics</h4>
+      <p>Data numerik berbasis waktu (time-series). Contoh: CPU usage 72%, request rate 150 req/s, latency P95 = 320ms</p>
+      <span class="tag tag-red">Prometheus</span>
+    </div>
+    <div class="card" style="max-width:260px; border-color: rgba(79,195,247,.5)">
+      <h4 style="color:#4fc3f7">Logs</h4>
+      <p>Catatan kejadian diskret yang terjadi di sistem. Contoh: error log, access log, audit trail</p>
+      <span class="tag tag-blue">Loki / ELK</span>
+    </div>
+    <div class="card" style="max-width:260px; border-color: rgba(100,221,23,.5)">
+      <h4 style="color:#b2ff59">Traces</h4>
+      <p>Jejak perjalanan request melewati berbagai layanan/microservice dari ujung ke ujung</p>
+      <span class="tag tag-green">Jaeger / Tempo</span>
+    </div>
+  </div>
+  <div class="hbox mt">
+    Hands-on ini berfokus pada pilar pertama: <strong>Metrics</strong>
+  </div>
+</section>
+
+<section>
+  <h2>Evolusi Monitoring</h2>
+  <div class="diagram">
+Generasi 1 (1988)          Generasi 2 (2000-an)         Generasi 3 (2012+)
+--------------------       ----------------------       ----------------------
+     SNMP                  Nagios / Zabbix              Prometheus / Grafana
+  (Pull/Push OID)          (Check-based, agent)         (Pull metrics, TSDB)
+  Network devices          Server infra                 Cloud-native / k8s
+
+  Sederhana                Lebih kaya fitur             Skalabel, label-based
+  MIB-based                Threshold alerts             Flexible PromQL
+  UDP port 161             Active checks                Scrape model
+  </div>
+  <p class="small mt">Ketiga generasi masih relevan dan digunakan bersama di lingkungan enterprise</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 2 — SNMP
+═══════════════════════════════════════════════════════════════════════════ -->
+<section class="slide-section" data-background-gradient="linear-gradient(135deg,#0d2137,#1a3a5c)">
+  <div class="section-number">02</div>
+  <h2>SNMP</h2>
+  <p style="color:#4fc3f7; font-size:.9em">Simple Network Management Protocol</p>
+</section>
+
+<section>
+  <h2>Apa itu SNMP?</h2>
+  <div class="hbox-blue">
+    SNMP adalah protokol standar Internet (RFC 1157, 1993) untuk <strong>mengumpulkan
+    dan mengatur informasi</strong> perangkat jaringan: router, switch, server, printer, UPS.
+  </div>
+  <div class="two-col mt">
+    <div>
+      <h3>Karakteristik</h3>
+      <ul class="steps">
+        <li><span class="step-num">1</span>Berjalan di atas <strong>UDP port 161</strong> (queries) dan 162 (traps)</li>
+        <li><span class="step-num">2</span>Mendukung <strong>GET, SET, TRAP</strong>, GetNext, GetBulk</li>
+        <li><span class="step-num">3</span>Data diorganisir dalam hierarki <strong>MIB</strong></li>
+        <li><span class="step-num">4</span>Tiga versi: v1, v2c, <strong>v3</strong> (paling aman)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Digunakan Untuk</h3>
+      <ul class="steps">
+        <li><span class="step-num" style="background:#4fc3f7"></span>Monitor bandwidth network</li>
+        <li><span class="step-num" style="background:#4fc3f7"></span>CPU &amp; memory perangkat</li>
+        <li><span class="step-num" style="background:#4fc3f7"></span>Status interface jaringan</li>
+        <li><span class="step-num" style="background:#4fc3f7"></span>Deteksi link down (trap)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Komponen SNMP</h2>
+  <div class="diagram">
+  ┌─────────────────────────────────────────────────────────┐
+  │                  SNMP Architecture                      │
+  │                                                         │
+  │   ┌──────────────────┐       ┌───────────────────────┐ │
+  │   │   NMS / Manager  │       │    Managed Device     │ │
+  │   │  (Zabbix, PRTG,  │──────▶│   (Router, Switch,   │ │
+  │   │   LibreNMS)      │  GET  │    Server, Printer)   │ │
+  │   │                  │◀──────│                       │ │
+  │   │  Mengumpulkan,   │ Response  ┌───────────────┐   │ │
+  │   │  menampilkan,    │       │   │  SNMP Agent   │   │ │
+  │   │  memberi alert   │◀──────│   │  (daemon)     │   │ │
+  │   └──────────────────┘ TRAP  │   └───────────────┘   │ │
+  │          ▲                   │   ┌───────────────┐   │ │
+  │          │                   │   │  MIB Objects  │   │ │
+  │        UDP 162               │   │  (OID tree)   │   │ │
+  │                              │   └───────────────┘   │ │
+  │                              └───────────────────────┘ │
+  └─────────────────────────────────────────────────────────┘
+  </div>
+</section>
+
+<section>
+  <h2>MIB &amp; OID</h2>
+  <div class="two-col-3-2">
+    <div>
+      <div class="hbox-blue" style="font-size:.7em">
+        <strong>MIB</strong> (Management Information Base) adalah kamus yang mendefinisikan
+        semua objek yang dapat di-query pada perangkat. Setiap objek memiliki
+        <strong>OID</strong> (Object Identifier) berupa angka bertitik.
+      </div>
+      <pre><code class="language-bash"># Contoh OID penting (MIB-II / RFC 1213)
+.1.3.6.1.2.1.1.1.0   # sysDescr  (deskripsi sistem)
+.1.3.6.1.2.1.1.5.0   # sysName   (hostname)
+.1.3.6.1.2.1.1.3.0   # sysUpTime
+
+# CPU load (UCD-SNMP-MIB)
+.1.3.6.1.4.1.2021.11.9.0   # load 1min
+
+# Interface in/out octets
+.1.3.6.1.2.1.2.2.1.10.1   # ifInOctets  eth0
+.1.3.6.1.2.1.2.2.1.16.1   # ifOutOctets eth0</code></pre>
+    </div>
+    <div>
+      <h3>SNMP Commands</h3>
+      <pre><code class="language-bash"># Query (GET)
+snmpget -v2c -c public \
+  192.168.1.1 \
+  .1.3.6.1.2.1.1.1.0
+
+# Walk (semua OID)
+snmpwalk -v2c -c public \
+  192.168.1.1 system
+
+# Versi 3 (lebih aman)
+snmpget -v3 -u admin \
+  -A mypassword \
+  -l authPriv \
+  192.168.1.1 sysUpTime.0</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>SNMP v1 vs v2c vs v3</h2>
+  <table>
+    <thead>
+      <tr><th>Fitur</th><th>SNMPv1</th><th>SNMPv2c</th><th>SNMPv3</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Tahun</td><td>1988</td><td>1993</td><td>1998</td>
+      </tr>
+      <tr>
+        <td>Autentikasi</td>
+        <td class="text-red">Community string (plaintext)</td>
+        <td class="text-red">Community string (plaintext)</td>
+        <td class="text-accent">Username + Hash (MD5/SHA)</td>
+      </tr>
+      <tr>
+        <td>Enkripsi</td>
+        <td class="text-red">Tidak ada</td>
+        <td class="text-red">Tidak ada</td>
+        <td class="text-accent">DES / AES-128/256</td>
+      </tr>
+      <tr>
+        <td>GetBulk</td><td class="text-red">Tidak</td><td class="text-accent">Ya</td><td class="text-accent">Ya</td>
+      </tr>
+      <tr>
+        <td>64-bit counter</td><td class="text-red">Tidak</td><td class="text-accent">Ya</td><td class="text-accent">Ya</td>
+      </tr>
+      <tr>
+        <td>Rekomendasi</td>
+        <td>Legacy only</td>
+        <td>Internal network</td>
+        <td class="text-accent" style="font-weight:600">Gunakan ini</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Keterbatasan SNMP</h2>
+  <div class="cards">
+    <div class="card">
+      <h4>Pull-only (default)</h4>
+      <p>Manager harus aktif polling ke setiap device; tidak efisien untuk ribuan node</p>
+    </div>
+    <div class="card">
+      <h4>MIB Complexity</h4>
+      <p>Vendor sering proprietary MIB; sulit dikompilasi dan dikelola</p>
+    </div>
+    <div class="card">
+      <h4>Tidak Cloud-Native</h4>
+      <p>Container, microservice, dan ephemeral service tidak cocok dengan model SNMP</p>
+    </div>
+    <div class="card">
+      <h4>Tidak Flexible</h4>
+      <p>Sulit melakukan query ad-hoc atau agregasi kompleks dibanding PromQL</p>
+    </div>
+  </div>
+  <div class="hbox mt">
+    Inilah sebabnya lahir tools generasi baru seperti <strong>Prometheus</strong>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 3 — PROMETHEUS
+═══════════════════════════════════════════════════════════════════════════ -->
+<section class="slide-section" data-background-gradient="linear-gradient(135deg,#2d0e00,#5c1a00)">
+  <div class="section-number">03</div>
+  <h2>Prometheus</h2>
+  <p style="color:#ff8a65; font-size:.9em">Open-source Monitoring &amp; Alerting Toolkit</p>
+</section>
+
+<section>
+  <h2>Apa itu Prometheus?</h2>
+  <div class="two-col-3-2">
+    <div>
+      <div class="hbox" style="font-size:.7em; margin-bottom:.8em">
+        Prometheus adalah sistem monitoring <em>time-series</em> open-source yang
+        dikembangkan di SoundCloud (2012) dan sekarang dikelola oleh
+        <strong>CNCF</strong> (Cloud Native Computing Foundation).
+        Menjadi standar de-facto untuk monitoring Kubernetes.
+      </div>
+      <div class="metric-row">
+        <span class="metric-name">Pull Model</span>
+        <span class="metric-desc">Prometheus yang mendatangi target untuk mengambil metrics (scrape)</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-name">TSDB</span>
+        <span class="metric-desc">Time Series Database bawaan; efisien untuk data metrics</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-name">PromQL</span>
+        <span class="metric-desc">Query language yang powerful untuk analisis metrics</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-name">Labels</span>
+        <span class="metric-desc">Dimensi fleksibel; satu metric bisa punya banyak label</span>
+      </div>
+    </div>
+    <div>
+      <pre style="font-size:.55em"><code class="language-yaml"># prometheus.yml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "webserver1"
+    static_configs:
+      - targets:
+          - "webserver1:5000"
+
+  - job_name: "webserver2"
+    static_configs:
+      - targets:
+          - "webserver2:5000"</code></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Arsitektur Prometheus</h2>
+  <div class="diagram" style="font-size:.6em">
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │                        Prometheus Ecosystem                            │
+  │                                                                        │
+  │  ┌───────────────┐   scrape   ┌────────────────────────────────────┐  │
+  │  │  HTTP /metrics│◀───────────│           PROMETHEUS               │  │
+  │  │  (Your App)   │            │                                    │  │
+  │  └───────────────┘            │  ┌──────────┐  ┌────────────────┐ │  │
+  │                               │  │  Scrape  │  │    TSDB        │ │  │
+  │  ┌───────────────┐   scrape   │  │  Engine  │─▶│  (local disk)  │ │  │
+  │  │ node_exporter │◀───────────│  └──────────┘  └───────┬────────┘ │  │
+  │  │ (OS metrics)  │            │                        │          │  │
+  │  └───────────────┘            │  ┌──────────────────────▼───────┐ │  │
+  │                               │  │   PromQL Query Engine        │ │  │
+  │  ┌───────────────┐   push     │  └──────────────────────┬───────┘ │  │
+  │  │ Pushgateway   │───────────▶│                          │         │  │
+  │  │ (batch jobs)  │            │  ┌────────────┐ ┌────────▼──────┐ │  │
+  │  └───────────────┘            │  │ Alertmanager│ │  HTTP API /  │ │  │
+  │                               │  │            │ │  Web UI :9090 │ │  │
+  │  ┌───────────────┐  discover  │  └────────────┘ └───────────────┘ │  │
+  │  │Service Discov.│───────────▶│                                    │  │
+  │  │(k8s, consul,  │            └────────────────────────────────────┘  │
+  │  │ ec2, dns...)  │                           │ query                   │
+  │  └───────────────┘                    ┌──────▼──────┐                 │
+  │                                       │   Grafana   │                 │
+  │                                       └─────────────┘                 │
+  └────────────────────────────────────────────────────────────────────────┘
+  </div>
+</section>
+
+<section>
+  <h2>Tipe Metrics Prometheus</h2>
+  <div class="metric-row" style="padding:.6em .5em; margin:.25em 0; background:rgba(230,82,44,.08); border-radius:6px">
+    <span class="metric-name" style="font-size:1.1em">Counter</span>
+    <div>
+      <p style="margin:0; font-size:.7em; color:#ddd">Nilai yang hanya <strong>naik</strong> (tidak pernah turun). Reset ke 0 saat restart.</p>
+      <code style="font-size:.62em; color:#ffb74d">http_requests_total{method="GET", status="200"} 1024</code>
+    </div>
+    <span class="tag tag-red">Selalu naik</span>
+  </div>
+  <div class="metric-row" style="padding:.6em .5em; margin:.25em 0; background:rgba(79,195,247,.08); border-radius:6px">
+    <span class="metric-name" style="font-size:1.1em">Gauge</span>
+    <div>
+      <p style="margin:0; font-size:.7em; color:#ddd">Nilai yang bisa <strong>naik atau turun</strong> setiap saat.</p>
+      <code style="font-size:.62em; color:#ffb74d">cpu_usage_percent 72.4 | requests_in_progress 5</code>
+    </div>
+    <span class="tag tag-blue">Naik/turun</span>
+  </div>
+  <div class="metric-row" style="padding:.6em .5em; margin:.25em 0; background:rgba(100,221,23,.08); border-radius:6px">
+    <span class="metric-name" style="font-size:1.1em">Histogram</span>
+    <div>
+      <p style="margin:0; font-size:.7em; color:#ddd">Distribusi nilai ke dalam bucket; mendukung <strong>percentile (P50, P95, P99)</strong>.</p>
+      <code style="font-size:.62em; color:#ffb74d">http_request_duration_seconds_bucket{le="0.1"} 872</code>
+    </div>
+    <span class="tag tag-green">Percentile</span>
+  </div>
+  <div class="metric-row" style="padding:.6em .5em; margin:.25em 0; background:rgba(200,100,255,.08); border-radius:6px">
+    <span class="metric-name" style="font-size:1.1em">Summary</span>
+    <div>
+      <p style="margin:0; font-size:.7em; color:#ddd">Serupa histogram tapi <strong>quantile dihitung di sisi client</strong>; tidak bisa diagregasi.</p>
+      <code style="font-size:.62em; color:#ffb74d">rpc_duration_seconds{quantile="0.95"} 0.321</code>
+    </div>
+    <span class="tag">Client-side</span>
+  </div>
+</section>
+
+<section>
+  <h2>Exposition Format &mdash; /metrics</h2>
+  <div class="hbox-blue" style="font-size:.7em; margin-bottom:.6em">
+    Setiap aplikasi yang ingin dimonitor harus mengekspos endpoint <code>/metrics</code>
+    dalam format text plain yang dipahami Prometheus (OpenMetrics format).
+  </div>
+  <pre><code class="language-bash"># HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{server="webserver1",method="GET",endpoint="/",http_status="200"} 143
+http_requests_total{server="webserver1",method="GET",endpoint="/api/data",http_status="200"} 87
+http_requests_total{server="webserver1",method="GET",endpoint="/error",http_status="500"} 21
+
+# HELP http_request_duration_seconds HTTP request latency
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{server="webserver1",le="0.025"} 89
+http_request_duration_seconds_bucket{server="webserver1",le="0.1"}   134
+http_request_duration_seconds_bucket{server="webserver1",le="0.5"}   198
+http_request_duration_seconds_bucket{server="webserver1",le="+Inf"}  230
+http_request_duration_seconds_sum{server="webserver1"} 18.432
+http_request_duration_seconds_count{server="webserver1"} 230
+
+# HELP http_requests_in_progress Requests currently in progress
+# TYPE http_requests_in_progress gauge
+http_requests_in_progress{server="webserver1"} 2</code></pre>
+</section>
+
+<section>
+  <h2>Instrumentasi dengan Python</h2>
+  <div class="hbox-blue" style="font-size:.68em; margin-bottom:.6em">
+    Library <code>prometheus-client</code> mempermudah instrumentasi aplikasi Python/Flask.
+  </div>
+  <pre><code class="language-python">from flask import Flask, Response, request
+from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+import time
+
+app = Flask(__name__)
+
+# Definisikan metrics
+REQUEST_COUNT = Counter(
+    'http_requests_total', 'Total HTTP requests',
+    ['server', 'method', 'endpoint', 'http_status']
+)
+REQUEST_LATENCY = Histogram(
+    'http_request_duration_seconds', 'Request latency',
+    ['server', 'method', 'endpoint']
+)
+
+@app.before_request
+def start_timer():
+    request._start_time = time.time()
+
+@app.after_request
+def record_metrics(response):
+    duration = time.time() - request._start_time
+    REQUEST_COUNT.labels('webserver1', request.method,
+                         request.path, response.status_code).inc()
+    REQUEST_LATENCY.labels('webserver1', request.method,
+                            request.path).observe(duration)
+    return response
+
+@app.route('/metrics')
+def metrics():
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)</code></pre>
+</section>
+
+<section>
+  <h2>PromQL &mdash; Query Language</h2>
+  <div class="hbox" style="font-size:.68em; margin-bottom:.5em">
+    PromQL adalah bahasa query functional untuk menganalisis time-series data di Prometheus.
+  </div>
+  <table>
+    <thead><tr><th>Query PromQL</th><th>Arti</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>http_requests_total</code></td>
+        <td>Semua nilai counter saat ini</td>
+      </tr>
+      <tr>
+        <td><code>http_requests_total{server="webserver1"}</code></td>
+        <td>Filter berdasarkan label</td>
+      </tr>
+      <tr>
+        <td><code>rate(http_requests_total[1m])</code></td>
+        <td>Laju request per detik (1 menit terakhir)</td>
+      </tr>
+      <tr>
+        <td><code>sum by (server) (rate(http_requests_total[1m]))</code></td>
+        <td>Total req/s per server</td>
+      </tr>
+      <tr>
+        <td><code>histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))</code></td>
+        <td>P95 latency</td>
+      </tr>
+      <tr>
+        <td><code>rate(http_requests_total{http_status=~"5.."}[1m]) / rate(http_requests_total[1m])</code></td>
+        <td>Error rate (5xx / total)</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 4 — GRAFANA
+═══════════════════════════════════════════════════════════════════════════ -->
+<section class="slide-section" data-background-gradient="linear-gradient(135deg,#1a2705,#2e4d0a)">
+  <div class="section-number">04</div>
+  <h2>Grafana</h2>
+  <p style="color:#b2ff59; font-size:.9em">Open-source Analytics &amp; Monitoring Platform</p>
+</section>
+
+<section>
+  <h2>Apa itu Grafana?</h2>
+  <div class="two-col">
+    <div>
+      <div class="hbox-green" style="font-size:.7em; margin-bottom:.7em">
+        Grafana adalah platform visualisasi open-source yang dapat terhubung ke
+        <strong>berbagai data source</strong> (Prometheus, InfluxDB, MySQL, Elasticsearch, dll.)
+        dan menampilkan data dalam dashboard yang interaktif.
+      </div>
+      <div class="metric-row">
+        <span class="metric-name" style="min-width:100px">Dashboard</span>
+        <span class="metric-desc">Kumpulan panel visualisasi yang bisa di-share</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-name" style="min-width:100px">Panels</span>
+        <span class="metric-desc">Time series, Gauge, Bar chart, Stat, Table, dll.</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-name" style="min-width:100px">Alerting</span>
+        <span class="metric-desc">Alert berbasis query, notifikasi ke Slack/Email/PagerDuty</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-name" style="min-width:100px">Provisioning</span>
+        <span class="metric-desc">Konfigurasi as-code (YAML &amp; JSON)</span>
+      </div>
+    </div>
+    <div>
+      <div style="background:#0d1117; border-radius:8px; padding:.8em; font-size:.6em; font-family:monospace; color:#7ee787">
+        <div style="color:#888; margin-bottom:.5em"># Auto-provisioning datasource</div>
+        <div style="color:#79c0ff">apiVersion: 1</div>
+        <br>
+        <div style="color:#79c0ff">datasources:</div>
+        <div>&nbsp;&nbsp;- name: Prometheus</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;type: prometheus</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;url: http://prometheus:9090</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;isDefault: true</div>
+        <br>
+        <div style="color:#888"># Dashboard auto-load dari JSON</div>
+        <div style="color:#79c0ff">providers:</div>
+        <div>&nbsp;&nbsp;- name: default</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;type: file</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;options:</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;path: /etc/grafana/provisioning/dashboards</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Tipe Panel Grafana</h2>
+  <div class="cards">
+    <div class="card">
+      <h4>Time Series</h4>
+      <p>Grafik garis untuk melihat tren nilai dari waktu ke waktu. Paling umum digunakan.</p>
+    </div>
+    <div class="card">
+      <h4>Gauge</h4>
+      <p>Jarum penunjuk (speedometer), cocok untuk menampilkan nilai saat ini vs threshold.</p>
+    </div>
+    <div class="card">
+      <h4>Stat</h4>
+      <p>Satu angka besar dengan warna. Cocok untuk total request, uptime, dll.</p>
+    </div>
+    <div class="card">
+      <h4>Bar Chart</h4>
+      <p>Perbandingan nilai antar kategori/instance dalam bentuk batang.</p>
+    </div>
+    <div class="card">
+      <h4>Table</h4>
+      <p>Tampilkan data dalam format tabel; bisa dikombinasikan dengan transformasi.</p>
+    </div>
+    <div class="card">
+      <h4>Heatmap</h4>
+      <p>Visualisasi distribusi histogram; sangat berguna untuk melihat latency distribution.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 5 — ARSITEKTUR LAB
+═══════════════════════════════════════════════════════════════════════════ -->
+<section class="slide-section" data-background-gradient="linear-gradient(135deg,#0f1923,#1c3044)">
+  <div class="section-number">05</div>
+  <h2>Arsitektur<br>Hands-On Lab</h2>
+  <p style="color:#4fc3f7; font-size:.9em">5 Container, 1 Docker Network</p>
+</section>
+
+<section>
+  <h2>Gambaran Arsitektur</h2>
+  <div class="diagram">
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │              Docker Network: monitoring                                │
+  │                                                                        │
+  │  ┌─────────────────┐    GET /metrics     ┌──────────────────────────┐ │
+  │  │   webserver1    │◀────────────────────│                          │ │
+  │  │   Flask + py    │  (setiap 10 detik)  │      prometheus          │ │
+  │  │   port 5001     │                     │      port 9090           │ │
+  │  └─────────────────┘                     │      TSDB storage        │ │
+  │                                          │                          │ │
+  │  ┌─────────────────┐    GET /metrics     │                          │ │
+  │  │   webserver2    │◀────────────────────│                          │ │
+  │  │   Flask + py    │  (setiap 10 detik)  └──────────┬───────────────┘ │
+  │  │   port 5002     │                                │                 │
+  │  └─────────────────┘                       PromQL query               │
+  │                                                     │                 │
+  │  ┌─────────────────┐   HTTP requests      ┌─────────▼──────────────┐ │
+  │  │traffic-generator│──────────────────────►│        grafana         │ │
+  │  │  alpine + curl  │  (loop, 2 detik)     │        port 3000       │ │
+  │  │  (auto traffic) │                      │   Dashboard otomatis   │ │
+  │  └─────────────────┘                      └────────────────────────┘ │
+  └────────────────────────────────────────────────────────────────────────┘
+  </div>
+</section>
+
+<section>
+  <h2>Container &amp; Port</h2>
+  <table>
+    <thead>
+      <tr><th>Container</th><th>Image</th><th>Port</th><th>Fungsi</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>webserver1</code></td>
+        <td>custom (Flask)</td>
+        <td><span class="port-pill">5001</span></td>
+        <td>Web server dengan /metrics endpoint</td>
+      </tr>
+      <tr>
+        <td><code>webserver2</code></td>
+        <td>custom (Flask)</td>
+        <td><span class="port-pill">5002</span></td>
+        <td>Web server (lebih lambat, lebih banyak endpoint)</td>
+      </tr>
+      <tr>
+        <td><code>prometheus</code></td>
+        <td>prom/prometheus</td>
+        <td><span class="port-pill">9090</span></td>
+        <td>Scrape &amp; simpan metrics, PromQL, alerting</td>
+      </tr>
+      <tr>
+        <td><code>grafana</code></td>
+        <td>grafana/grafana</td>
+        <td><span class="port-pill">3000</span></td>
+        <td>Dashboard visualisasi (admin/admin123)</td>
+      </tr>
+      <tr>
+        <td><code>traffic-generator</code></td>
+        <td>alpine</td>
+        <td>&mdash;</td>
+        <td>Kirim HTTP request otomatis setiap 2 detik</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Endpoint Web Server</h2>
+  <div class="two-col">
+    <div>
+      <h3 style="color:#4fc3f7">WebServer 1</h3>
+      <table style="font-size:.6em">
+        <thead><tr><th>Endpoint</th><th>Perilaku</th></tr></thead>
+        <tbody>
+          <tr><td><code>/</code></td><td>Halaman utama HTML</td></tr>
+          <tr><td><code>/health</code></td><td>JSON: status ok, selalu 200</td></tr>
+          <tr><td><code>/api/data</code></td><td>JSON: data random (200)</td></tr>
+          <tr><td><code>/slow</code></td><td>Lambat 0.1 &ndash; 1.5 detik</td></tr>
+          <tr><td><code>/error</code></td><td>Selalu HTTP 500</td></tr>
+          <tr><td><code>/metrics</code></td><td>Prometheus metrics</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3 style="color:#ff8a65">WebServer 2</h3>
+      <table style="font-size:.6em">
+        <thead><tr><th>Endpoint</th><th>Perilaku</th></tr></thead>
+        <tbody>
+          <tr><td><code>/</code></td><td>Halaman utama HTML</td></tr>
+          <tr><td><code>/health</code></td><td>JSON: status ok, selalu 200</td></tr>
+          <tr><td><code>/api/users</code></td><td>JSON: daftar users random</td></tr>
+          <tr><td><code>/api/products</code></td><td>JSON: 20 produk, lebih besar</td></tr>
+          <tr><td><code>/slow</code></td><td>Lambat 0.5 &ndash; 3.0 detik</td></tr>
+          <tr><td><code>/error</code></td><td>Selalu HTTP 500</td></tr>
+          <tr><td><code>/metrics</code></td><td>Prometheus metrics</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Struktur Proyek</h2>
+  <pre><code class="language-bash">hands-on-prometheus-grafana/
+├── docker-compose.yml           # Orkestrasi semua container
+├── generate-traffic.sh          # Script manual kirim traffic
+│
+├── webserver1/
+│   ├── Dockerfile               # FROM python:3.11-slim
+│   ├── requirements.txt         # flask, prometheus-client
+│   └── app.py                   # Flask + instrumentasi Prometheus
+│
+├── webserver2/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app.py                   # Serupa ws1 tapi endpoint lebih banyak
+│
+├── prometheus/
+│   ├── prometheus.yml           # Scrape config (target: ws1 & ws2)
+│   └── alert_rules.yml          # 3 alert rules
+│
+└── grafana/provisioning/
+    ├── datasources/
+    │   └── datasource.yml       # Auto-setup Prometheus datasource
+    └── dashboards/
+        ├── dashboards.yml       # Dashboard provider config
+        └── webservers-dashboard.json  # 11 panel siap pakai</code></pre>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 6 — DEMO & PRAKTIKUM
+═══════════════════════════════════════════════════════════════════════════ -->
+<section class="slide-section" data-background-gradient="linear-gradient(135deg,#0a2205,#1a4a08)">
+  <div class="section-number">06</div>
+  <h2>Demo &amp; Praktikum</h2>
+  <p style="color:#b2ff59; font-size:.9em">Step-by-step hands-on</p>
+</section>
+
+<section>
+  <h2>Langkah 1 &mdash; Jalankan Lab</h2>
+  <pre><code class="language-bash"># 1. Masuk ke folder proyek
+cd hands-on-prometheus-grafana
+
+# 2. Build image dan jalankan semua container
+docker compose up -d --build
+
+# Output yang diharapkan:
+# [+] Building webserver1 ...  done
+# [+] Building webserver2 ...  done
+# [+] Running  5/5
+#  webserver1         Running
+#  webserver2         Running
+#  prometheus         Running
+#  grafana            Running
+#  traffic-generator  Running
+
+# 3. Cek status container
+docker compose ps
+
+# 4. Lihat log traffic-generator
+docker compose logs -f traffic-generator</code></pre>
+  <div class="hbox-green mt">
+    Tunggu sekitar 30 detik hingga semua container dalam keadaan <strong>Running</strong>
+    dan Grafana selesai provisioning.
+  </div>
+</section>
+
+<section>
+  <h2>Langkah 2 &mdash; Verifikasi Web Server</h2>
+  <ul class="steps">
+    <li>
+      <span class="step-num">1</span>
+      <div>Buka <code>http://localhost:5001</code> &rarr; Halaman utama WebServer 1</div>
+    </li>
+    <li>
+      <span class="step-num">2</span>
+      <div>Buka <code>http://localhost:5001/metrics</code> &rarr; Lihat raw Prometheus metrics</div>
+    </li>
+    <li>
+      <span class="step-num">3</span>
+      <div>Buka <code>http://localhost:5002/metrics</code> &rarr; Bandingkan dengan WebServer 2</div>
+    </li>
+    <li>
+      <span class="step-num">4</span>
+      <div>Buka <code>http://localhost:5001/slow</code> beberapa kali &rarr; Respons lambat, latency naik</div>
+    </li>
+    <li>
+      <span class="step-num">5</span>
+      <div>Buka <code>http://localhost:5001/error</code> &rarr; HTTP 500, error rate akan muncul di Prometheus</div>
+    </li>
+  </ul>
+</section>
+
+<section>
+  <h2>Langkah 3 &mdash; Jelajahi Prometheus</h2>
+  <ul class="steps">
+    <li>
+      <span class="step-num">1</span>
+      <div>Buka <code>http://localhost:9090</code></div>
+    </li>
+    <li>
+      <span class="step-num">2</span>
+      <div>Klik <strong>Status &rarr; Targets</strong> &mdash; pastikan webserver1 &amp; webserver2 berstatus <span style="color:#64dd17">UP</span></div>
+    </li>
+    <li>
+      <span class="step-num">3</span>
+      <div>Di tab <strong>Graph</strong>, ketik query berikut satu per satu dan tekan Enter:</div>
+    </li>
+  </ul>
+  <pre style="margin-top:.5em"><code class="language-promql"># Total semua request
+http_requests_total
+
+# Request rate per server
+sum by (server) (rate(http_requests_total[1m]))
+
+# Hanya error 5xx
+rate(http_requests_total{http_status=~"5.."}[1m])
+
+# Latency P95
+histogram_quantile(0.95,
+  sum by (server, le) (
+    rate(http_request_duration_seconds_bucket[5m])
+  )
+)</code></pre>
+</section>
+
+<section>
+  <h2>Langkah 4 &mdash; Grafana Dashboard</h2>
+  <ul class="steps">
+    <li>
+      <span class="step-num">1</span>
+      <div>Buka <code>http://localhost:3000</code></div>
+    </li>
+    <li>
+      <span class="step-num">2</span>
+      <div>Login: <code>admin</code> / <code>admin123</code></div>
+    </li>
+    <li>
+      <span class="step-num">3</span>
+      <div>Klik <strong>Dashboards</strong> di menu kiri &rarr; folder <em>Web Server Monitoring</em></div>
+    </li>
+    <li>
+      <span class="step-num">4</span>
+      <div>Buka dashboard <strong>"Web Server Monitoring"</strong></div>
+    </li>
+    <li>
+      <span class="step-num">5</span>
+      <div>Amati 11 panel: Total Requests, Request Rate, Latency P50/P95/P99, Error Rate, Status Codes, In-Progress</div>
+    </li>
+    <li>
+      <span class="step-num">6</span>
+      <div>Ubah time range ke <strong>Last 5 minutes</strong> untuk data lebih real-time</div>
+    </li>
+  </ul>
+</section>
+
+<section>
+  <h2>Langkah 5 &mdash; Generate Traffic Manual</h2>
+  <pre><code class="language-bash"># Beri permission execute
+chmod +x generate-traffic.sh
+
+# Kirim 20 request per endpoint
+./generate-traffic.sh 20
+
+# Output:
+# =========================================================
+#   Traffic Generator - Web Server Monitoring Lab
+# =========================================================
+#   Sending 20 requests to each endpoint ...
+#
+# --- WebServer 1 (http://localhost:5001) ---
+#   GET /                  .................... done
+#   GET /health            .................... done
+#   GET /api/data          .................... done
+#   GET /slow              ... done
+#   GET /error             ..... done
+# ...</code></pre>
+  <div class="hbox-blue mt">
+    Refresh dashboard Grafana setelah script selesai &mdash; lihat lonjakan pada grafik request rate dan error rate.
+  </div>
+</section>
+
+<section>
+  <h2>Langkah 6 &mdash; Simulasi Server Down</h2>
+  <ul class="steps">
+    <li>
+      <span class="step-num">1</span>
+      <div>Matikan webserver1: <code>docker compose stop webserver1</code></div>
+    </li>
+    <li>
+      <span class="step-num">2</span>
+      <div>Tunggu 30 detik &rarr; Cek <strong>Prometheus Status &rarr; Targets</strong>, webserver1 berubah ke <span style="color:#ff5252">DOWN</span></div>
+    </li>
+    <li>
+      <span class="step-num">3</span>
+      <div>Buka <strong>Prometheus &rarr; Alerts</strong> &rarr; alert <code>WebServerDown</code> aktif (firing)</div>
+    </li>
+    <li>
+      <span class="step-num">4</span>
+      <div>Amati di Grafana &mdash; panel Total Requests webserver1 berhenti naik</div>
+    </li>
+    <li>
+      <span class="step-num">5</span>
+      <div>Hidupkan kembali: <code>docker compose start webserver1</code></div>
+    </li>
+    <li>
+      <span class="step-num">6</span>
+      <div>Verifikasi alert kembali ke <span style="color:#64dd17">Resolved</span> setelah 30 detik</div>
+    </li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 7 — PROMQL & ALERTING
+═══════════════════════════════════════════════════════════════════════════ -->
+<section class="slide-section" data-background-gradient="linear-gradient(135deg,#1c0a2e,#3d1255)">
+  <div class="section-number">07</div>
+  <h2>PromQL &amp;<br>Alerting Rule</h2>
+  <p style="color:#ce93d8; font-size:.9em">Analisis Mendalam &amp; Konfigurasi Alert</p>
+</section>
+
+<section>
+  <h2>PromQL Lanjutan</h2>
+  <pre><code class="language-promql"># ─── Aggregasi ────────────────────────────────────────────────────────────
+# Total request semua server, dikelompokkan per server
+sum by (server) (http_requests_total)
+
+# Rata-rata request rate per server (5 menit)
+avg by (server) (rate(http_requests_total[5m]))
+
+# ─── Filtering dengan regex ───────────────────────────────────────────────
+# Hanya endpoint yang mengandung "api"
+rate(http_requests_total{endpoint=~"/api/.*"}[1m])
+
+# Kecualikan endpoint /metrics
+rate(http_requests_total{endpoint!="/metrics"}[1m])
+
+# ─── Kalkulasi Error Rate dalam persen ────────────────────────────────────
+(
+  sum by (server) (rate(http_requests_total{http_status=~"5.."}[2m]))
+  /
+  sum by (server) (rate(http_requests_total[2m]))
+) * 100
+
+# ─── Latency average per endpoint ─────────────────────────────────────────
+sum by (server, endpoint) (rate(http_request_duration_seconds_sum[1m]))
+/
+sum by (server, endpoint) (rate(http_request_duration_seconds_count[1m]))</code></pre>
+</section>
+
+<section>
+  <h2>Alert Rules</h2>
+  <pre><code class="language-yaml"># prometheus/alert_rules.yml
+groups:
+  - name: webserver_alerts
+    rules:
+
+      # Server tidak dapat diakses > 30 detik
+      - alert: WebServerDown
+        expr: up{job=~"webserver.*"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Web server {{ $labels.job }} is DOWN"
+
+      # Error rate melebihi 10%
+      - alert: HighErrorRate
+        expr: |
+          rate(http_requests_total{http_status=~"5.."}[2m])
+          / rate(http_requests_total[2m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.server }}"
+
+      # Latency P95 melebihi 2 detik
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 2
+        for: 2m
+        labels:
+          severity: warning</code></pre>
+</section>
+
+<section>
+  <h2>Perbandingan SNMP vs Prometheus</h2>
+  <table>
+    <thead>
+      <tr><th>Aspek</th><th>SNMP</th><th>Prometheus</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Model</td>
+        <td>Pull (GET) + Push (TRAP)</td>
+        <td>Pull (Scrape)</td>
+      </tr>
+      <tr>
+        <td>Protokol</td>
+        <td>UDP 161/162</td>
+        <td>HTTP /metrics</td>
+      </tr>
+      <tr>
+        <td>Format Data</td>
+        <td>OID &rarr; Value</td>
+        <td>metric{labels} value</td>
+      </tr>
+      <tr>
+        <td>Query</td>
+        <td>OID tree walk</td>
+        <td>PromQL (powerful)</td>
+      </tr>
+      <tr>
+        <td>Target</td>
+        <td>Network devices</td>
+        <td>Aplikasi, container, OS</td>
+      </tr>
+      <tr>
+        <td>Cloud-Native</td>
+        <td class="text-red">Tidak</td>
+        <td class="text-accent">Ya (k8s ready)</td>
+      </tr>
+      <tr>
+        <td>Skalabilitas</td>
+        <td>Terbatas</td>
+        <td>Horizontal (federation)</td>
+      </tr>
+      <tr>
+        <td>Ekosistem</td>
+        <td>Zabbix, PRTG, LibreNMS</td>
+        <td>Grafana, Alertmanager</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     RINGKASAN
+═══════════════════════════════════════════════════════════════════════════ -->
+<section>
+  <h2>Ringkasan</h2>
+  <div class="cards">
+    <div class="card" style="max-width:220px; border-color:rgba(79,195,247,.4)">
+      <h4 style="color:#4fc3f7">SNMP</h4>
+      <p>Protocol standar untuk monitoring network device. Masih relevan untuk router &amp; switch. SNMPv3 untuk keamanan.</p>
+    </div>
+    <div class="card" style="max-width:220px; border-color:rgba(230,82,44,.4)">
+      <h4 style="color:#ff8a65">Prometheus</h4>
+      <p>Scrape /metrics dari aplikasi, simpan di TSDB, query dengan PromQL. Pull-based, cloud-native.</p>
+    </div>
+    <div class="card" style="max-width:220px; border-color:rgba(100,221,23,.4)">
+      <h4 style="color:#b2ff59">Grafana</h4>
+      <p>Dashboard visualisasi yang terhubung ke Prometheus. Auto-provisioning dengan YAML &amp; JSON.</p>
+    </div>
+    <div class="card" style="max-width:220px; border-color:rgba(245,166,35,.4)">
+      <h4 style="color:#f5a623">Docker</h4>
+      <p>Orkestrasi semua komponen dalam satu network. Mudah dijalankan dengan docker compose up.</p>
+    </div>
+  </div>
+  <div class="hbox-green mt" style="font-size:.68em">
+    <strong>Alur data:</strong>
+    Aplikasi &rarr; expose /metrics &rarr; Prometheus scrape &rarr; simpan TSDB &rarr; Grafana query &rarr; visualisasi dashboard
+  </div>
+</section>
+
+<section>
+  <h2>Tugas &amp; Eksplorasi</h2>
+  <ul class="steps">
+    <li>
+      <span class="step-num">1</span>
+      <div><strong>Lab 1:</strong> Jalankan lab, verifikasi semua target UP di Prometheus</div>
+    </li>
+    <li>
+      <span class="step-num">2</span>
+      <div><strong>Lab 2:</strong> Buat 5 query PromQL di Prometheus UI, screenshot hasilnya</div>
+    </li>
+    <li>
+      <span class="step-num">3</span>
+      <div><strong>Lab 3:</strong> Jalankan <code>generate-traffic.sh 50</code>, amati grafik di Grafana</div>
+    </li>
+    <li>
+      <span class="step-num">4</span>
+      <div><strong>Lab 4:</strong> Simulasikan server down, dokumentasikan alert yang muncul</div>
+    </li>
+    <li>
+      <span class="step-num">5</span>
+      <div><strong>Bonus:</strong> Tambahkan panel baru di Grafana menggunakan Gauge atau Bar chart</div>
+    </li>
+    <li>
+      <span class="step-num">6</span>
+      <div><strong>Bonus:</strong> Bandingkan latency P95 webserver1 vs webserver2. Mengapa berbeda?</div>
+    </li>
+  </ul>
+</section>
+
+<!-- CLOSING -->
+<section data-background-gradient="linear-gradient(135deg,#1a1a2e,#0f3460)">
+  <div style="padding: 1em 0">
+    <h2 style="color: var(--accent2); margin: .3em 0">Selamat Bereksperimen!</h2>
+    <p style="color:#aaa; font-size:.8em">
+      Monitoring adalah keahlian esensial bagi setiap System Administrator &amp; DevOps Engineer.
+    </p>
+    <div style="margin-top:1.2em">
+      <table style="font-size:.65em; margin:0 auto; max-width:420px">
+        <tr>
+          <td style="color:#888; padding:.3em .7em">WebServer 1</td>
+          <td><span class="port-pill">localhost:5001</span></td>
+        </tr>
+        <tr>
+          <td style="color:#888; padding:.3em .7em">WebServer 2</td>
+          <td><span class="port-pill">localhost:5002</span></td>
+        </tr>
+        <tr>
+          <td style="color:#888; padding:.3em .7em">Prometheus</td>
+          <td><span class="port-pill">localhost:9090</span></td>
+        </tr>
+        <tr>
+          <td style="color:#888; padding:.3em .7em">Grafana</td>
+          <td><span class="port-pill">localhost:3000</span> &mdash; admin / admin123</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+</div><!-- /.slides -->
+</div><!-- /.reveal -->
+
+<!-- Reveal.js scripts -->
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/zoom/zoom.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    progress: true,
+    controls: true,
+    controlsTutorial: false,
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'fade',
+    center: true,
+    // Canvas virtual — Reveal.js scale-transforms ini ke ukuran layar nyata
+    width: 1100,
+    height: 650,
+    margin: 0.04,
+    minScale: 0.1,
+    maxScale: 2.5,
+    disableLayout: false,
+    plugins: [ RevealHighlight, RevealNotes, RevealZoom ]
+  });
+</script>
+</body>
+</html>

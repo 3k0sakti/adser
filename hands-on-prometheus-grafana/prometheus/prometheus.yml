@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 10s        # How often to scrape targets
+  evaluation_interval: 10s    # How often to evaluate rules
+  scrape_timeout: 5s
+
+# Load alerting rules
+rule_files:
+  - "alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          instance: "prometheus"
+
+  # ─── Web Server 1 ───────────────────────────────────────────────────────────
+  - job_name: "webserver1"
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["webserver1:5000"]
+        labels:
+          instance: "webserver1"
+          environment: "production"
+
+  # ─── Web Server 2 ───────────────────────────────────────────────────────────
+  - job_name: "webserver2"
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["webserver2:5000"]
+        labels:
+          instance: "webserver2"
+          environment: "production"
