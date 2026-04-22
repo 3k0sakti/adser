@@ -16,7 +16,8 @@ Sebelum memulai, pastikan tools berikut sudah terinstal di laptop kamu:
 
 ### Instalasi Cepat (macOS)
 
-```bash
+```bashkubectl get pods -n kube-system | grep metrics-server
+kubectl top pods -n default
 # minikube
 brew install minikube
 
@@ -70,10 +71,8 @@ Browser
 Bagian 1  →  Setup Cluster (minikube)
 Bagian 2  →  Deploy Aplikasi Web Pertama
 Bagian 3  →  Scaling & Self-Healing
-Bagian 4  →  Update & Rollback
-Bagian 5  →  ConfigMap & Secret
-Bagian 6  →  Persistent Storage
-Bagian 7  →  Multi-Komponen (GuestBook Full)
+Bagian 4  →  Namespace & Isolasi
+Bagian 5  →  Cleanup
 ```
 
 ---
@@ -385,20 +384,15 @@ Amati: K8s langsung membuat Pod pengganti secara otomatis!
 
 ```bash
 # Pastikan metrics-server aktif
+minikube addons enable metrics-server
+
+# Tunggu metrics-server siap (~1 menit), lalu verifikasi
+kubectl get pods -n kube-system | grep metrics-server
 kubectl top nodes
 kubectl top pods
-
-# Buat HPA
-kubectl autoscale deployment webapp \
-  --cpu-percent=50 \
-  --min=2 \
-  --max=10
-
-# Lihat status HPA
-kubectl get hpa
 ```
 
-Buat file `hpa.yaml` untuk versi deklaratif:
+Buat file `hpa.yaml` untuk mendefinisikan HPA secara deklaratif:
 
 ```yaml
 # hpa.yaml
@@ -424,8 +418,16 @@ spec:
 
 ```bash
 kubectl apply -f hpa.yaml
+
+# Pantau status HPA (tunggu beberapa saat hingga kolom TARGETS tidak <unknown>)
 kubectl get hpa -w
 ```
+
+> **Catatan:** Nilai `<unknown>` pada kolom `TARGETS` muncul jika:
+> - `metrics-server` belum siap — tunggu 1–2 menit setelah diaktifkan
+> - Terdapat lebih dari satu HPA yang mengontrol Deployment yang sama (ambiguous selector)
+>
+> Pastikan hanya ada **satu HPA** untuk Deployment `webapp`. Cek dengan `kubectl get hpa` dan hapus duplikat jika ada: `kubectl delete hpa <nama-duplikat>`
 
 ## 3.4 Simulasi Load (Opsional)
 
@@ -446,7 +448,7 @@ kubectl delete pod load-generator
 
 ---
 
-# BAGIAN 4 — Update & Rollback
+# BAGIAN 4 — Namespace & Isolasi
 
 ## 4.1 Rolling Update via ConfigMap
 
@@ -868,32 +870,7 @@ exit
 
 ---
 
-# BAGIAN 8 — Namespace & Isolasi
-
-```bash
-# Buat namespace untuk dev dan staging
-kubectl create namespace development
-kubectl create namespace staging
-
-# Deploy webapp di namespace development
-kubectl apply -f deployment.yaml -f service.yaml -n development
-
-# Deploy webapp di namespace staging (versi berbeda)
-kubectl apply -f deployment.yaml -f service.yaml -n staging
-
-# Lihat resource per namespace
-kubectl get all -n development
-kubectl get all -n staging
-
-# Bandingkan
-kubectl get pods --all-namespaces
-```
-
----
-
----
-
-# BAGIAN 9 — Cleanup
+# BAGIAN 5 — Cleanup
 
 ```bash
 # Hapus semua resource yang dibuat
