@@ -287,11 +287,23 @@ kubectl get service webapp-svc
 ## 2.6 Akses Aplikasi
 
 ```bash
-# Dapatkan URL akses
-minikube service webapp-svc --url
-
-# Atau buka langsung di browser
+# Buka langsung di browser (sekaligus membuat tunnel)
 minikube service webapp-svc
+```
+
+Output perintah di atas akan menampilkan **dua tabel URL**:
+
+| URL | Keterangan |
+|-----|------------|
+| `http://192.168.49.2:30080` | IP internal VM minikube — **tidak dapat diakses** langsung dari macOS/Windows dengan Docker driver |
+| `http://127.0.0.1:<port>` | Tunnel URL — **gunakan ini** untuk membuka di browser |
+
+> **Penting (macOS & Windows dengan Docker driver):** Gunakan URL tunnel `http://127.0.0.1:<port>` yang muncul di tabel kedua. **Jangan tutup terminal** selama mengakses aplikasi, karena tunnel aktif selama terminal terbuka.
+
+Untuk mendapatkan URL tunnel secara langsung:
+
+```bash
+minikube service webapp-svc --url
 ```
 
 Kamu akan melihat halaman web dengan **nama kamu sendiri** yang berjalan di dalam Pod Kubernetes.
@@ -400,17 +412,40 @@ spec:
 ```
 
 ```bash
+# Sebelum apply, pastikan belum ada HPA lain untuk webapp
+kubectl get hpa
+
 kubectl apply -f hpa.yaml
 
 # Pantau status HPA (tunggu beberapa saat hingga kolom TARGETS tidak <unknown>)
 kubectl get hpa -w
 ```
 
-> **Catatan:** Nilai `<unknown>` pada kolom `TARGETS` muncul jika:
-> - `metrics-server` belum siap — tunggu 1–2 menit setelah diaktifkan
-> - Terdapat lebih dari satu HPA yang mengontrol Deployment yang sama (ambiguous selector)
+> **Catatan:** Nilai `<unknown>` pada kolom `TARGETS` (contoh: `cpu: <unknown>/50%`) bisa disebabkan oleh dua hal:
 >
-> Pastikan hanya ada **satu HPA** untuk Deployment `webapp`. Cek dengan `kubectl get hpa` dan hapus duplikat jika ada: `kubectl delete hpa <nama-duplikat>`
+> **Penyebab 1 — HPA duplikat (paling sering terjadi)**  
+> Jika kamu sebelumnya pernah menjalankan `kubectl autoscale deployment webapp ...`, sudah ada HPA bernama `webapp`. Saat `hpa.yaml` di-apply, muncul HPA kedua bernama `webapp-hpa` yang mengontrol Deployment yang sama — kondisi ini menyebabkan kedua HPA stuck di `<unknown>`.
+>
+> Cek dan hapus HPA yang duplikat:
+> ```bash
+> kubectl get hpa
+> # Jika ada lebih dari satu HPA untuk webapp, hapus yang lama
+> kubectl delete hpa webapp
+> ```
+> Setelah duplikat dihapus, `webapp-hpa` akan terupdate dalam 1–2 menit.
+>
+> **Penyebab 2 — metrics-server belum siap**  
+> Verifikasi dengan:
+> ```bash
+> kubectl top nodes
+> kubectl top pods
+> ```
+> Jika perintah di atas mengembalikan error, restart metrics-server:
+> ```bash
+> kubectl rollout restart deployment/metrics-server -n kube-system
+> # Tunggu ~1 menit, lalu cek kembali
+> kubectl get hpa
+> ```
 
 ## 3.4 Simulasi Load (Opsional)
 
@@ -480,13 +515,37 @@ kubectl apply -f namespace.yaml
 
 ## 4.3 Deploy ke Namespace Tertentu
 
+> **Perhatian — NodePort adalah resource cluster-wide:**  
+> Nilai `nodePort` (misal `30080`) yang dipakai di `service.yaml` tidak bisa digunakan lagi jika Service di namespace `default` masih berjalan. Solusinya: hapus field `nodePort` agar Kubernetes memilih port otomatis, atau gunakan nomor berbeda (misal `30081`).
+>
+> Buat file `service-dev.yaml` khusus untuk namespace `development`:
+> ```yaml
+> # service-dev.yaml
+> apiVersion: v1
+> kind: Service
+> metadata:
+>   name: webapp-svc
+> spec:
+>   selector:
+>     app: webapp
+>   type: NodePort
+>   ports:
+>   - protocol: TCP
+>     port: 80
+>     targetPort: 80
+>     # nodePort tidak ditentukan → Kubernetes pilih otomatis (30000–32767)
+> ```
+
 ```bash
-# Deploy webapp ke namespace development
-kubectl apply -f configmap.yaml -f deployment.yaml -f service.yaml \
+# Deploy webapp ke namespace development (gunakan service-dev.yaml, bukan service.yaml)
+kubectl apply -f configmap.yaml -f deployment.yaml -f service-dev.yaml \
   -n development
 
 # Lihat pod di namespace development
 kubectl get pods -n development
+
+# Dapatkan NodePort yang di-assign otomatis
+kubectl get service webapp-svc -n development
 
 # Lihat semua pod di semua namespace
 kubectl get pods -A
@@ -697,3 +756,6 @@ kubectl delete all --all -n <namespace>
 - [Play with Kubernetes](https://labs.play-with-k8s.com/)
 - [Helm Hub](https://artifacthub.io/)
 - [CNCF Landscape](https://landscape.cncf.io/)
+
+---
+
