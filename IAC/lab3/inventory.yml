@@ -1,0 +1,11 @@
+---
+# Ansible Inventory - Lab 3
+# Tiga web server, dikonfigurasi menggunakan Role
+
+all:
+  children:
+    webservers:
+      hosts:
+        web-1: { ansible_connection: community.docker.docker }
+        web-2: { ansible_connection: community.docker.docker }
+        web-3: { ansible_connection: community.docker.docker }
