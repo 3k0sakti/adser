@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hands-On: IAC dengan Ansible + Docker</title>
+  <style>
+    :root {
+      --bg:      #0a0f1e;
+      --surface: #131c2e;
+      --card:    #1e2a3a;
+      --border:  #2d3f55;
+      --blue:    #4fc3f7;
+      --green:   #69f0ae;
+      --orange:  #ffb74d;
+      --red:     #ef5350;
+      --purple:  #ce93d8;
+      --text:    #e0e0e0;
+      --muted:   #9e9e9e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── HEADER ── */
+    .hero {
+      background: radial-gradient(ellipse at 30% 40%, #0d2137 0%, #050d17 70%);
+      padding: 3rem 2rem 2.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero h1 { font-size: 2.2rem; color: var(--blue); line-height: 1.3; }
+    .hero .sub { color: #aaa; margin-top: .5rem; font-size: 1rem; }
+    .hero .meta { font-size: .8rem; color: #666; margin-top: 1.5rem; border-top: 1px solid #222; padding-top: 1rem; }
+    .badge-row { display: flex; justify-content: center; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+    .badge {
+      background: #1e2a3a;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: .25rem .8rem;
+      font-size: .75rem;
+      color: var(--blue);
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── NAV TABS ── */
+    .tabs {
+      display: flex;
+      gap: .5rem;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: .6rem 1.2rem;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .9rem;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: .2s;
+    }
+    .tab:hover { color: var(--blue); }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-size: 1.4rem;
+      color: var(--blue);
+      margin-bottom: 1.2rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .section-title .num {
+      background: var(--blue);
+      color: #000;
+      font-size: .75rem;
+      font-weight: 700;
+      width: 1.8em;
+      height: 1.8em;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── CARDS ── */
+    .cards { display: grid; gap: 1rem; }
+    .cards-2 { grid-template-columns: 1fr 1fr; }
+    .cards-3 { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 650px) {
+      .cards-2, .cards-3 { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+    }
+    .card.blue   { border-top: 3px solid var(--blue); }
+    .card.green  { border-top: 3px solid var(--green); }
+    .card.orange { border-top: 3px solid var(--orange); }
+    .card.red    { border-top: 3px solid var(--red); }
+    .card.purple { border-top: 3px solid var(--purple); }
+    .card h4 { font-size: .95rem; margin-bottom: .5rem; }
+    .card h4.blue   { color: var(--blue); }
+    .card h4.green  { color: var(--green); }
+    .card h4.orange { color: var(--orange); }
+    .card h4.red    { color: var(--red); }
+    .card h4.purple { color: var(--purple); }
+    .card ul { list-style: none; padding: 0; font-size: .88rem; }
+    .card ul li::before { content: "▸ "; color: var(--blue); }
+    .card ul li { margin-bottom: .3rem; }
+
+    /* ── STEP BLOCK ── */
+    .steps { display: flex; flex-direction: column; gap: 1.2rem; }
+    .step {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+      padding: .8rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .step-num {
+      background: var(--blue);
+      color: #000;
+      font-weight: 700;
+      font-size: .8rem;
+      min-width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-title { font-size: .95rem; font-weight: 600; }
+    .step-os {
+      margin-left: auto;
+      font-size: .7rem;
+      padding: .15rem .5rem;
+      border-radius: 4px;
+      background: #0f2035;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .step-body { padding: 1rem 1.2rem; font-size: .88rem; }
+    .step-body p { margin-bottom: .6rem; }
+
+    /* ── CODE BLOCK ── */
+    pre {
+      background: #060d18;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: .8rem 0;
+    }
+    pre code {
+      font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-size: .82rem;
+      color: #abb2bf;
+      white-space: pre;
+    }
+    .code-lang {
+      font-size: .68rem;
+      color: var(--muted);
+      text-align: right;
+      margin-bottom: -.4rem;
+      padding-right: .2rem;
+    }
+
+    /* Syntax highlight classes */
+    .kw  { color: #c678dd; }   /* keyword */
+    .st  { color: #98c379; }   /* string */
+    .cm  { color: #5c6370; font-style: italic; } /* comment */
+    .nm  { color: #e06c75; }   /* name/var */
+    .fn  { color: #61afef; }   /* function */
+    .nu  { color: #d19a66; }   /* number */
+
+    /* ── ALERT BOXES ── */
+    .alert {
+      border-radius: 8px;
+      padding: .8rem 1.2rem;
+      margin: 1rem 0;
+      font-size: .88rem;
+      display: flex;
+      gap: .8rem;
+    }
+    .alert-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .alert.info    { background: #0d1f35; border-left: 4px solid var(--blue); }
+    .alert.warn    { background: #1f1400; border-left: 4px solid var(--orange); }
+    .alert.success { background: #0a1f14; border-left: 4px solid var(--green); }
+    .alert.danger  { background: #1f0d0d; border-left: 4px solid var(--red); }
+
+    /* ── OS SELECTOR ── */
+    .os-tabs {
+      display: flex;
+      gap: .4rem;
+      margin: .8rem 0;
+    }
+    .os-tab {
+      padding: .3rem .8rem;
+      font-size: .78rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .os-tab.active { background: var(--blue); color: #000; border-color: var(--blue); font-weight: 700; }
+    .os-panel { display: none; }
+    .os-panel.active { display: block; }
+
+    /* ── TABLE ── */
+    .cmp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .85rem;
+      margin: 1rem 0;
+    }
+    .cmp-table th {
+      background: #0f2035;
+      padding: .6rem 1rem;
+      text-align: left;
+      color: var(--blue);
+      border-bottom: 2px solid var(--border);
+    }
+    .cmp-table td {
+      padding: .6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .cmp-table tr:last-child td { border-bottom: none; }
+    .cmp-table tr:hover td { background: #131c2e; }
+
+    /* ── FLOW ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+    }
+    .flow-step {
+      background: var(--card);
+      border: 1px solid var(--blue);
+      border-radius: 8px;
+      padding: .5rem .9rem;
+      text-align: center;
+      font-size: .82rem;
+    }
+    .flow-arr { color: var(--blue); font-size: 1.2rem; }
+
+    /* ── TOPOLOGY DIAGRAM ── */
+    .topology {
+      background: #060d18;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      text-align: center;
+      font-family: monospace;
+      font-size: .82rem;
+      color: #abb2bf;
+      margin: 1rem 0;
+      line-height: 1.9;
+    }
+    .topo-box {
+      display: inline-block;
+      border: 1px solid var(--blue);
+      border-radius: 6px;
+      padding: .2rem .8rem;
+      margin: .2rem;
+      color: var(--blue);
+    }
+    .topo-box.green { border-color: var(--green); color: var(--green); }
+    .topo-box.orange { border-color: var(--orange); color: var(--orange); }
+
+    /* ── DIVIDER ── */
+    hr.fancy {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2rem 0;
+    }
+
+    /* ── BACK LINK ── */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      color: var(--blue);
+      text-decoration: none;
+      font-size: .85rem;
+      margin-bottom: 1rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    /* ── PROGRESS TRACKER ── */
+    .progress-bar {
+      background: var(--border);
+      border-radius: 4px;
+      height: 6px;
+      margin: .5rem 0 1.5rem;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      transition: width .3s;
+    }
+
+    /* ── FILE TREE ── */
+    .file-tree {
+      background: #060d18;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: monospace;
+      font-size: .82rem;
+      line-height: 1.9;
+    }
+    .ft-dir  { color: var(--blue); }
+    .ft-file { color: #abb2bf; }
+    .ft-note { color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════════════ -->
+<div class="hero">
+  <h1>Hands-On: IAC dengan Ansible<br><span style="color:#fff">Menggunakan Docker sebagai Lab Environment</span></h1>
+  <p class="sub">Provisioning otomatis container Docker dengan Ansible Playbook — tanpa agen, tanpa cloud berbayar</p>
+  <div class="badge-row">
+    <span class="badge">🐳 Docker</span>
+    <span class="badge">⚙️ Ansible</span>
+    <span class="badge">🍎 macOS</span>
+    <span class="badge">🪟 Windows (WSL2)</span>
+    <span class="badge">🐧 Linux</span>
+    <span class="badge">🎓 Beginner Friendly</span>
+  </div>
+  <div class="meta">
+    Matakuliah Advanced Services &nbsp;|&nbsp; Universitas Brawijaya &nbsp;|&nbsp; 2025/2026
+    &nbsp;·&nbsp; <a href="../index.html" style="color:var(--blue);">← Kembali ke Materi IAC</a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MAIN CONTAINER
+══════════════════════════════════════════════════════════ -->
+<div class="container">
+
+  <!-- ── TABS ── -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('overview')">📖 Overview</button>
+    <button class="tab" onclick="showTab('konsep')">💡 Konsep & Perbedaan</button>
+    <button class="tab" onclick="showTab('setup')">🔧 Setup Environment</button>
+    <button class="tab" onclick="showTab('lab1')">🧪 Lab 1: First Playbook</button>
+    <button class="tab" onclick="showTab('lab2')">🧪 Lab 2: Multi-Container</button>
+    <button class="tab" onclick="showTab('lab3')">🧪 Lab 3: Roles & Idempoten</button>
+    <button class="tab" onclick="showTab('referensi')">📚 Referensi</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       TAB: OVERVIEW
+  ══════════════════════════════════════════════════ -->
+  <div id="tab-overview" class="tab-content active">
+
+    <div class="section-title"><span class="num">1</span> Apa yang Akan Kita Pelajari?</div>
+
+    <p style="margin-bottom:1rem; font-size:.92rem;">
+      Hands-on ini mengajarkan cara menggunakan <strong style="color:var(--blue)">Ansible</strong>
+      untuk mengelola infrastruktur berbasis <strong style="color:var(--blue)">Docker container</strong>
+      sebagai pengganti server fisik/VM — ideal untuk belajar IAC di laptop lokal
+      (macOS maupun Windows via WSL2) <em>tanpa biaya cloud</em>.
+    </p>
+
+    <div class="cards cards-3" style="margin-bottom:1.5rem;">
+      <div class="card blue">
+        <h4 class="blue">🎯 Tujuan</h4>
+        <ul>
+          <li>Memahami konsep IAC secara praktis</li>
+          <li>Menulis Ansible Playbook pertama</li>
+          <li>Mengelola banyak container sekaligus</li>
+          <li>Memahami idempoten</li>
+          <li>Menerapkan Ansible Roles</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h4 class="green">🛠️ Tools yang Digunakan</h4>
+        <ul>
+          <li>Docker Desktop (Mac/Windows)</li>
+          <li>Ansible (via pip / brew)</li>
+          <li>Docker SDK for Python</li>
+          <li>Text editor (VS Code)</li>
+          <li>Terminal (zsh / PowerShell+WSL2)</li>
+        </ul>
+      </div>
+      <div class="card orange">
+        <h4 class="orange">⏱️ Durasi Estimasi</h4>
+        <ul>
+          <li>Setup Environment: ~20 menit</li>
+          <li>Lab 1: ~20 menit</li>
+          <li>Lab 2: ~25 menit</li>
+          <li>Lab 3: ~30 menit</li>
+          <li><strong>Total: ~95 menit</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:2rem;"><span class="num">2</span> Arsitektur Lab</div>
+
+    <p style="font-size:.88rem; margin-bottom:1rem;">
+      Kita akan menggunakan <strong>Docker container sebagai "managed node"</strong>
+      (target yang dikonfigurasi Ansible), sementara Ansible berjalan di host machine.
+      Ini adalah pendekatan yang sah dan umum digunakan untuk testing Ansible secara lokal.
+    </p>
+
+    <div class="topology">
+      <div style="color:var(--muted); margin-bottom:.5rem;">Arsitektur Hands-On</div>
+      <br>
+      <span class="topo-box">🖥️ Host Machine<br><small>(macOS / WSL2)</small><br><small style="color:var(--green)">Ansible Control Node</small></span>
+      <br>
+      <span style="color:var(--blue); font-size:1.4rem;">│<br>│ Docker SDK / SSH over Docker Network<br>│</span>
+      <br>
+      <span style="color:var(--muted)">Docker Engine</span>
+      <br>
+      <span style="color:var(--blue); font-size:1.2rem;">┌───────────────┬───────────────┬───────────────┐</span>
+      <br>
+      <span class="topo-box green">🐳 web-1<br><small>Ubuntu 22.04</small><br><small>port :8081</small></span>
+      &nbsp;&nbsp;
+      <span class="topo-box green">🐳 web-2<br><small>Ubuntu 22.04</small><br><small>port :8082</small></span>
+      &nbsp;&nbsp;
+      <span class="topo-box orange">🐳 db-1<br><small>Ubuntu 22.04</small><br><small>port :3306</small></span>
+    </div>
+
+    <div class="alert info">
+      <span class="alert-icon">💡</span>
+      <div>
+        <strong>Mengapa Docker, bukan VM?</strong> Container Docker jauh lebih ringan dari VM
+        (startup &lt;1 detik vs 30-60 detik), tidak memerlukan lisensi OS tambahan, dan
+        bisa berjalan di laptop dengan RAM 8GB sekalipun. Untuk belajar Ansible,
+        perilakunya identik dengan target server sungguhan.
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:2rem;"><span class="num">3</span> Alur Kerja Hands-On</div>
+
+    <div class="flow">
+      <div class="flow-step">🔧<br><strong>Setup</strong><br>Install tools</div>
+      <div class="flow-arr">→</div>
+      <div class="flow-step" style="border-color:var(--orange)">🐳<br><strong>Lab 1</strong><br>First Playbook</div>
+      <div class="flow-arr">→</div>
+      <div class="flow-step" style="border-color:var(--purple)">🌐<br><strong>Lab 2</strong><br>Multi-Container</div>
+      <div class="flow-arr">→</div>
+      <div class="flow-step" style="border-color:var(--green)">♻️<br><strong>Lab 3</strong><br>Roles & Idempoten</div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       TAB: KONSEP & PERBEDAAN
+  ══════════════════════════════════════════════════ -->
+  <div id="tab-konsep" class="tab-content">
+
+    <div class="section-title"><span class="num">1</span> Ansible vs Docker vs Kubernetes — Apa Bedanya?</div>
+
+    <p style="font-size:.88rem; margin-bottom:1rem;">
+      Pertanyaan ini sangat umum muncul. Ketiganya berkaitan dengan otomasi infrastruktur
+      tetapi memiliki <strong>peran, lapisan, dan masalah yang diselesaikan berbeda</strong>.
+    </p>
+
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th>Aspek</th>
+          <th style="color:var(--green)">⚙️ Ansible</th>
+          <th style="color:var(--blue)">🐳 Docker (Compose)</th>
+          <th style="color:var(--purple)">☸️ Kubernetes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Kategori</strong></td>
+          <td>Configuration Management / IAC</td>
+          <td>Container Runtime / Build</td>
+          <td>Container Orchestration</td>
+        </tr>
+        <tr>
+          <td><strong>Pertanyaan yang dijawab</strong></td>
+          <td>"Bagaimana cara mengkonfigurasi server ini?"</td>
+          <td>"Bagaimana cara menjalankan aplikasi ini?"</td>
+          <td>"Bagaimana cara mengelola ratusan container di banyak server?"</td>
+        </tr>
+        <tr>
+          <td><strong>Scope</strong></td>
+          <td>OS, packages, files, services, users</td>
+          <td>Container image, jaringan container lokal</td>
+          <td>Cluster container di banyak node</td>
+        </tr>
+        <tr>
+          <td><strong>Agentless?</strong></td>
+          <td>✅ Ya (SSH)</td>
+          <td>—</td>
+          <td>❌ Butuh kubelet agent di tiap node</td>
+        </tr>
+        <tr>
+          <td><strong>Bahasa Konfigurasi</strong></td>
+          <td>YAML (Playbook)</td>
+          <td>YAML (docker-compose.yml) / Dockerfile</td>
+          <td>YAML (manifests)</td>
+        </tr>
+        <tr>
+          <td><strong>Self-healing</strong></td>
+          <td>❌ Perlu dijalankan ulang</td>
+          <td>Terbatas (restart policy)</td>
+          <td>✅ Ya (ReplicaSet, probes)</td>
+        </tr>
+        <tr>
+          <td><strong>Skala</strong></td>
+          <td>Ratusan server</td>
+          <td>1 host (atau beberapa dengan Swarm)</td>
+          <td>Ribuan container di banyak node</td>
+        </tr>
+        <tr>
+          <td><strong>Kompleksitas</strong></td>
+          <td>🟢 Rendah – Menengah</td>
+          <td>🟢 Rendah</td>
+          <td>🔴 Tinggi</td>
+        </tr>
+        <tr>
+          <td><strong>Digunakan untuk</strong></td>
+          <td>Provisioning OS, deploy app, patch, hardening security</td>
+          <td>Lokal dev, CI/CD, microservices sederhana</td>
+          <td>Production-grade container platform</td>
+        </tr>
+        <tr>
+          <td><strong>Contoh tools sejenis</strong></td>
+          <td>Puppet, Chef, SaltStack</td>
+          <td>Podman, nerdctl</td>
+          <td>OpenShift, Nomad, Docker Swarm</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert info">
+      <span class="alert-icon">🔑</span>
+      <div>
+        <strong>Kunci memahami perbedaannya:</strong> Docker menjawab <em>"apa yang dijalankan"</em>,
+        Ansible menjawab <em>"bagaimana lingkungan disiapkan"</em>, dan Kubernetes menjawab
+        <em>"bagaimana memastikan aplikasi selalu berjalan dan bisa di-scale"</em>.
+        Ketiganya saling melengkapi — bukan pengganti satu sama lain!
+      </div>
+    </div>
+
+    <hr class="fancy">
+    <div class="section-title"><span class="num">2</span> Lapisan Otomasi Infrastruktur</div>
+
+    <div class="cards cards-2">
+      <div class="card purple">
+        <h4 class="purple">Layer 1: Provisioning (Terraform / CloudFormation)</h4>
+        <ul>
+          <li>Membuat VM, VPC, subnet, storage di cloud</li>
+          <li>"Infrastruktur kosong" siap pakai</li>
+          <li><em>Terraform apply → EC2 instance terbuat</em></li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h4 class="green">Layer 2: Configuration Management (Ansible)</h4>
+        <ul>
+          <li>Install OS packages, copy files, setup services</li>
+          <li>Konfigurasi VM yang sudah ada</li>
+          <li><em>ansible-playbook → nginx terinstall & berjalan</em></li>
+        </ul>
+      </div>
+      <div class="card blue">
+        <h4 class="blue">Layer 3: Container Runtime (Docker)</h4>
+        <ul>
+          <li>Menjalankan aplikasi dalam container terisolasi</li>
+          <li>Image-based deployment</li>
+          <li><em>docker run → aplikasi berjalan</em></li>
+        </ul>
+      </div>
+      <div class="card orange">
+        <h4 class="orange">Layer 4: Orchestration (Kubernetes)</h4>
+        <ul>
+          <li>Mengelola ribuan container lintas node</li>
+          <li>Auto-scaling, self-healing, load balancing</li>
+          <li><em>kubectl apply → deployment production-ready</em></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="alert success" style="margin-top:1.5rem;">
+      <span class="alert-icon">✅</span>
+      <div>
+        <strong>Apakah mungkin menggabungkan semua ini?</strong> YA! Stack umum di industri:
+        <strong>Terraform</strong> (buat infra cloud) →
+        <strong>Ansible</strong> (install Docker & konfigurasi node) →
+        <strong>Docker</strong> (build image) →
+        <strong>Kubernetes</strong> (deploy di production).
+      </div>
+    </div>
+
+    <hr class="fancy">
+    <div class="section-title"><span class="num">3</span> Ansible + Docker: Kombinasi Sempurna untuk Belajar</div>
+
+    <div class="cards cards-2">
+      <div class="card green">
+        <h4 class="green">✅ Keunggulan Setup Ini</h4>
+        <ul>
+          <li>Tidak butuh VM berat atau cloud berbayar</li>
+          <li>Container startup &lt; 1 detik</li>
+          <li>Bisa simulate multi-server di 1 laptop</li>
+          <li>Reset lingkungan instan (<code>docker rm</code>)</li>
+          <li>Sama persis dengan server Ubuntu sungguhan</li>
+          <li>Berjalan di macOS dan Windows (WSL2)</li>
+        </ul>
+      </div>
+      <div class="card orange">
+        <h4 class="orange">⚠️ Keterbatasan (vs Server Sungguhan)</h4>
+        <ul>
+          <li>Tidak bisa test full kernel modules</li>
+          <li>systemd perlu konfigurasi khusus di container</li>
+          <li>Tidak ada isolasi network yang kompleks</li>
+          <li>Tidak ideal untuk test firewall rules (iptables)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="alert warn" style="margin-top:1rem;">
+      <span class="alert-icon">⚠️</span>
+      <div>
+        <strong>Catatan:</strong> Di hands-on ini, kita menggunakan <strong>Docker connection plugin</strong>
+        Ansible (bukan SSH biasa). Ansible berkomunikasi langsung ke container via Docker socket,
+        sehingga tidak perlu setup SSH key di dalam container.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       TAB: SETUP ENVIRONMENT
+  ══════════════════════════════════════════════════ -->
+  <div id="tab-setup" class="tab-content">
+
+    <div class="section-title"><span class="num">Setup</span> Persiapan Lingkungan</div>
+
+    <div class="alert warn">
+      <span class="alert-icon">⚠️</span>
+      <div>
+        Lakukan setup ini <strong>sebelum</strong> memulai lab.
+        Estimasi waktu: 15–20 menit tergantung kecepatan internet.
+      </div>
+    </div>
+
+    <!-- OS SELECTOR -->
+    <div class="os-tabs">
+      <button class="os-tab active" onclick="showOS('mac')">🍎 macOS</button>
+      <button class="os-tab" onclick="showOS('win')">🪟 Windows (WSL2)</button>
+      <button class="os-tab" onclick="showOS('linux')">🐧 Linux (Ubuntu)</button>
+    </div>
+
+    <!-- ── macOS ── -->
+    <div id="os-mac" class="os-panel active">
+      <div class="steps">
+
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">1</div>
+            <div class="step-title">Install Docker Desktop for Mac</div>
+            <span class="step-os">🍎 macOS</span>
+          </div>
+          <div class="step-body">
+            <p>Unduh dan install Docker Desktop dari situs resmi:</p>
+            <div class="alert info">
+              <span class="alert-icon">🔗</span>
+              <div><a href="https://docs.docker.com/desktop/install/mac-install/" style="color:var(--blue);" target="_blank">https://docs.docker.com/desktop/install/mac-install/</a><br>
+              Pilih versi sesuai chip: <strong>Apple Silicon (M1/M2/M3/M4)</strong> atau <strong>Intel</strong></div>
+            </div>
+            <p>Setelah install, buka Docker Desktop dan tunggu hingga status menjadi <strong style="color:var(--green)">Running</strong>.</p>
+            <p>Verifikasi:</p>
+            <div class="code-lang">shell</div>
+            <pre><code>docker --version
+docker run hello-world</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">2</div>
+            <div class="step-title">Install Python 3 &amp; pip</div>
+            <span class="step-os">🍎 macOS</span>
+          </div>
+          <div class="step-body">
+            <p>macOS sudah memiliki Python 3. Cek versinya:</p>
+            <div class="code-lang">shell</div>
+            <pre><code>python3 --version   <span class="cm"># minimal 3.9</span></code></pre>
+            <p>Jika belum ada, install via Homebrew:</p>
+            <div class="code-lang">shell</div>
+            <pre><code><span class="cm"># Install Homebrew terlebih dahulu jika belum ada</span>
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+<span class="cm"># Install Python</span>
+brew install python3</code></pre>
+            <div class="alert warn">
+              <span class="alert-icon">⚠️</span>
+              <div>Hindari menginstall Ansible ke system Python. Gunakan virtual environment!</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">3</div>
+            <div class="step-title">Buat Virtual Environment &amp; Install Ansible</div>
+            <span class="step-os">🍎 macOS</span>
+          </div>
+          <div class="step-body">
+            <div class="code-lang">shell</div>
+            <pre><code><span class="cm"># Buat folder project</span>
+mkdir ~/ansible-docker-lab && cd ~/ansible-docker-lab
+
+<span class="cm"># Buat virtual environment</span>
+python3 -m venv .venv
+
+<span class="cm"># Aktifkan virtual environment</span>
+source .venv/bin/activate
+
+<span class="cm"># Install Ansible dan Docker SDK</span>
+pip install ansible docker
+
+<span class="cm"># Verifikasi</span>
+ansible --version
+python3 -c "import docker; print(docker.__version__)"</code></pre>
+            <div class="alert success">
+              <span class="alert-icon">✅</span>
+              <div>Output <code>ansible --version</code> harus menampilkan versi 2.15+ dan Python path di dalam <code>.venv</code></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">4</div>
+            <div class="step-title">Install Ansible Collection untuk Docker</div>
+            <span class="step-os">🍎 macOS</span>
+          </div>
+          <div class="step-body">
+            <p>Kita butuh collection <code>community.docker</code> untuk modul-modul Docker:</p>
+            <div class="code-lang">shell</div>
+            <pre><code>ansible-galaxy collection install community.docker
+
+<span class="cm"># Verifikasi</span>
+ansible-galaxy collection list | grep docker</code></pre>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Windows ── -->
+    <div id="os-win" class="os-panel">
+      <div class="steps">
+
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">1</div>
+            <div class="step-title">Aktifkan WSL2 (Windows Subsystem for Linux)</div>
+            <span class="step-os">🪟 Windows</span>
+          </div>
+          <div class="step-body">
+            <div class="alert info">
+              <span class="alert-icon">ℹ️</span>
+              <div><strong>Mengapa WSL2?</strong> Ansible berjalan di Linux/macOS. Di Windows,
+              kita menggunakan WSL2 (Ubuntu) sebagai control node Ansible.</div>
+            </div>
+            <p>Buka <strong>PowerShell sebagai Administrator</strong>:</p>
+            <div class="code-lang">powershell</div>
+            <pre><code><span class="cm"># Aktifkan WSL2</span>
+wsl --install
+
+<span class="cm"># Atau jika sudah install WSL1:</span>
+wsl --set-default-version 2
+
+<span class="cm"># Install Ubuntu (default)</span>
+wsl --install -d Ubuntu-22.04</code></pre>
+            <p>Restart komputer setelah instalasi. Buka <strong>Ubuntu</strong> dari Start Menu, buat username & password.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">2</div>
+            <div class="step-title">Install Docker Desktop for Windows</div>
+            <span class="step-os">🪟 Windows</span>
+          </div>
+          <div class="step-body">
+            <div class="alert info">
+              <span class="alert-icon">🔗</span>
+              <div><a href="https://docs.docker.com/desktop/install/windows-install/" style="color:var(--blue);" target="_blank">https://docs.docker.com/desktop/install/windows-install/</a></div>
+            </div>
+            <p>Saat setup, pastikan mencentang:</p>
+            <ul style="list-style:disc; padding-left:1.5rem; font-size:.88rem;">
+              <li><strong>Use WSL 2 instead of Hyper-V</strong> ✅</li>
+              <li><strong>Enable integration with WSL distros</strong> ✅</li>
+            </ul>
+            <p style="margin-top:.8rem;">Verifikasi dari terminal Ubuntu (WSL2):</p>
+            <div class="code-lang">shell (WSL2 Ubuntu)</div>
+            <pre><code>docker --version
+docker run hello-world</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">3</div>
+            <div class="step-title">Install Python &amp; Ansible di WSL2</div>
+            <span class="step-os">🪟 Windows → WSL2 Ubuntu</span>
+          </div>
+          <div class="step-body">
+            <p>Semua perintah berikut dijalankan di terminal <strong>Ubuntu WSL2</strong>:</p>
+            <div class="code-lang">shell (WSL2 Ubuntu)</div>
+            <pre><code><span class="cm"># Update package list</span>
+sudo apt update && sudo apt upgrade -y
+
+<span class="cm"># Install Python3 dan pip</span>
+sudo apt install -y python3 python3-pip python3-venv
+
+<span class="cm"># Buat folder project</span>
+mkdir ~/ansible-docker-lab && cd ~/ansible-docker-lab
+
+<span class="cm"># Buat virtual environment</span>
+python3 -m venv .venv
+source .venv/bin/activate
+
+<span class="cm"># Install Ansible dan Docker SDK</span>
+pip install ansible docker
+
+<span class="cm"># Verifikasi</span>
+ansible --version</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">4</div>
+            <div class="step-title">Install Ansible Collection untuk Docker</div>
+            <span class="step-os">🪟 Windows → WSL2 Ubuntu</span>
+          </div>
+          <div class="step-body">
+            <div class="code-lang">shell (WSL2 Ubuntu)</div>
+            <pre><code>ansible-galaxy collection install community.docker</code></pre>
+            <div class="alert info">
+              <span class="alert-icon">💡</span>
+              <div>Selanjutnya, semua perintah Lab dijalankan dari terminal <strong>Ubuntu WSL2</strong>, bukan PowerShell.
+              Anda bisa menggunakan <strong>VS Code</strong> dengan ekstensi WSL untuk pengalaman terbaik.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Linux ── -->
+    <div id="os-linux" class="os-panel">
+      <div class="steps">
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">1</div>
+            <div class="step-title">Install Docker Engine</div>
+            <span class="step-os">🐧 Ubuntu/Debian</span>
+          </div>
+          <div class="step-body">
+            <div class="code-lang">shell</div>
+            <pre><code><span class="cm"># Install Docker Engine (official method)</span>
+curl -fsSL https://get.docker.com | sh
+
+<span class="cm"># Tambah user ke group docker (tidak perlu sudo)</span>
+sudo usermod -aG docker $USER
+newgrp docker
+
+<span class="cm"># Verifikasi</span>
+docker run hello-world</code></pre>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-header">
+            <div class="step-num">2</div>
+            <div class="step-title">Install Ansible via Virtual Environment</div>
+            <span class="step-os">🐧 Linux</span>
+          </div>
+          <div class="step-body">
+            <div class="code-lang">shell</div>
+            <pre><code>sudo apt update && sudo apt install -y python3-pip python3-venv
+mkdir ~/ansible-docker-lab && cd ~/ansible-docker-lab
+python3 -m venv .venv
+source .venv/bin/activate
+pip install ansible docker
+ansible-galaxy collection install community.docker</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STRUKTUR FOLDER -->
+    <hr class="fancy">
+    <div class="section-title"><span class="num">5</span> Struktur Folder Project</div>
+
+    <p style="font-size:.88rem; margin-bottom:.8rem;">Buat struktur folder berikut di dalam folder <code>ansible-docker-lab</code>:</p>
+
+    <div class="file-tree">
+      <span class="ft-dir">ansible-docker-lab/</span><br>
+      ├── <span class="ft-dir">.venv/</span>                  <span class="ft-note"># virtual environment (jangan di-commit)</span><br>
+      ├── <span class="ft-dir">lab1/</span><br>
+      │   ├── <span class="ft-file">inventory.yml</span>         <span class="ft-note"># daftar container target</span><br>
+      │   └── <span class="ft-file">playbook.yml</span>          <span class="ft-note"># instruksi konfigurasi</span><br>
+      ├── <span class="ft-dir">lab2/</span><br>
+      │   ├── <span class="ft-file">docker-compose.yml</span>    <span class="ft-note"># setup multi-container</span><br>
+      │   ├── <span class="ft-file">inventory.yml</span><br>
+      │   └── <span class="ft-file">playbook.yml</span><br>
+      ├── <span class="ft-dir">lab3/</span><br>
+      │   ├── <span class="ft-file">inventory.yml</span><br>
+      │   ├── <span class="ft-file">site.yml</span><br>
+      │   └── <span class="ft-dir">roles/</span><br>
+      │       └── <span class="ft-dir">webserver/</span><br>
+      │           ├── <span class="ft-dir">tasks/</span><br>
+      │           │   └── <span class="ft-file">main.yml</span><br>
+      │           ├── <span class="ft-dir">handlers/</span><br>
+      │           │   └── <span class="ft-file">main.yml</span><br>
+      │           └── <span class="ft-dir">templates/</span><br>
+      │               └── <span class="ft-file">index.html.j2</span><br>
+      └── <span class="ft-file">ansible.cfg</span>               <span class="ft-note"># konfigurasi global Ansible</span>
+    </div>
+
+    <div class="code-lang">shell</div>
+    <pre><code><span class="cm"># Buat semua folder sekaligus</span>
+mkdir -p lab1 lab2 lab3/roles/webserver/{tasks,handlers,templates}
+touch ansible.cfg
+touch lab1/{inventory.yml,playbook.yml}
+touch lab2/{docker-compose.yml,inventory.yml,playbook.yml}
+touch lab3/{inventory.yml,site.yml}
+touch lab3/roles/webserver/tasks/main.yml
+touch lab3/roles/webserver/handlers/main.yml
+touch lab3/roles/webserver/templates/index.html.j2</code></pre>
+
+    <p style="font-size:.88rem; margin-top:.8rem;">Buat file <code>ansible.cfg</code>:</p>
+    <div class="code-lang">ini · ansible.cfg</div>
+    <pre><code>[defaults]
+host_key_checking = False
+interpreter_python = auto_silent
+collections_path = ~/.ansible/collections
+
+[community.docker]
+docker_host = unix:///var/run/docker.sock</code></pre>
+
+    <div class="alert success">
+      <span class="alert-icon">✅</span>
+      <div><strong>Setup selesai!</strong> Lanjut ke Lab 1.</div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       TAB: LAB 1
+  ══════════════════════════════════════════════════ -->
+  <div id="tab-lab1" class="tab-content">
+
+    <div class="section-title"><span class="num">Lab 1</span> First Playbook — Install Nginx di Container</div>
+
+    <div class="cards cards-3" style="margin-bottom:1.5rem; font-size:.85rem;">
+      <div class="card blue"><h4 class="blue">🎯 Tujuan</h4>Jalankan playbook Ansible pertama untuk install nginx di dalam container Docker</div>
+      <div class="card green"><h4 class="green">⏱️ Durasi</h4>~20 menit</div>
+      <div class="card orange"><h4 class="orange">📁 Folder</h4><code>~/ansible-docker-lab/lab1/</code></div>
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="steps">
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <div class="step-title">Siapkan Container Target</div>
+        </div>
+        <div class="step-body">
+          <p>Kita buat container Ubuntu yang akan menjadi "managed node" Ansible:</p>
+          <div class="code-lang">shell</div>
+          <pre><code><span class="cm"># Pull image Ubuntu 22.04</span>
+docker pull ubuntu:22.04
+
+<span class="cm"># Jalankan container (tetap hidup di background)</span>
+docker run -d \
+  --name web-target \
+  --hostname web-target \
+  -p 8080:80 \
+  ubuntu:22.04 \
+  sleep infinity
+
+<span class="cm"># Cek container berjalan</span>
+docker ps</code></pre>
+          <div class="alert info">
+            <span class="alert-icon">💡</span>
+            <div><code>sleep infinity</code> membuat container tetap hidup tanpa menjalankan service apapun.
+            Ansible akan SSH masuk (via Docker connection plugin) untuk menginstall nginx.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <div class="step-title">Buat Inventory File</div>
+        </div>
+        <div class="step-body">
+          <p>File inventory mendaftarkan host yang akan dikelola Ansible. Kita gunakan
+          <strong>Docker connection plugin</strong> agar Ansible berkomunikasi langsung ke container:</p>
+          <div class="code-lang">yaml · lab1/inventory.yml</div>
+          <pre><code><span class="kw">---</span>
+<span class="nm">all</span>:
+  <span class="nm">children</span>:
+    <span class="nm">webservers</span>:
+      <span class="nm">hosts</span>:
+        <span class="nm">web-target</span>:
+          <span class="nm">ansible_connection</span>: <span class="st">community.docker.docker</span>
+          <span class="cm"># Nama container Docker sebagai host</span>
+          <span class="cm"># Tidak butuh SSH key!</span></code></pre>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <div class="step-title">Buat Playbook</div>
+        </div>
+        <div class="step-body">
+          <p>Playbook adalah "resep" instruksi Ansible. Setiap <strong>task</strong> mendefinisikan satu aksi yang bersifat idempoten:</p>
+          <div class="code-lang">yaml · lab1/playbook.yml</div>
+          <pre><code><span class="kw">---</span>
+<span class="kw">- name</span>: <span class="st">Setup Web Server di Container</span>
+  <span class="kw">hosts</span>: <span class="st">webservers</span>
+  <span class="kw">gather_facts</span>: <span class="kw">yes</span>
+
+  <span class="kw">tasks</span>:
+
+    <span class="kw">- name</span>: <span class="st">Update apt cache</span>
+      <span class="kw">ansible.builtin.apt</span>:
+        <span class="kw">update_cache</span>: <span class="kw">yes</span>
+        <span class="kw">cache_valid_time</span>: <span class="nu">3600</span>
+
+    <span class="kw">- name</span>: <span class="st">Install nginx</span>
+      <span class="kw">ansible.builtin.apt</span>:
+        <span class="kw">name</span>: <span class="st">nginx</span>
+        <span class="kw">state</span>: <span class="st">present</span>
+
+    <span class="kw">- name</span>: <span class="st">Buat halaman HTML custom</span>
+      <span class="kw">ansible.builtin.copy</span>:
+        <span class="kw">content</span>: |
+          <span class="st">&lt;!DOCTYPE html&gt;</span>
+          <span class="st">&lt;html&gt;</span>
+          <span class="st">  &lt;head&gt;&lt;title&gt;IAC Hands-On Lab 1&lt;/title&gt;&lt;/head&gt;</span>
+          <span class="st">  &lt;body style="background:#0a0f1e; color:#4fc3f7; font-family:monospace;"&gt;</span>
+          <span class="st">    &lt;h1&gt;🚀 Ansible berhasil mengkonfigurasi server ini!&lt;/h1&gt;</span>
+          <span class="st">    &lt;p&gt;Container: {{ inventory_hostname }}&lt;/p&gt;</span>
+          <span class="st">    &lt;p&gt;OS: {{ ansible_distribution }} {{ ansible_distribution_version }}&lt;/p&gt;</span>
+          <span class="st">  &lt;/body&gt;</span>
+          <span class="st">&lt;/html&gt;</span>
+        <span class="kw">dest</span>: <span class="st">/var/www/html/index.html</span>
+        <span class="kw">mode</span>: <span class="st">'0644'</span>
+
+    <span class="kw">- name</span>: <span class="st">Jalankan nginx</span>
+      <span class="kw">ansible.builtin.shell</span>:
+        <span class="kw">cmd</span>: <span class="st">nginx -g 'daemon off;' &amp;</span>
+      <span class="kw">args</span>:
+        <span class="kw">executable</span>: <span class="st">/bin/bash</span>
+      <span class="kw">async</span>: <span class="nu">10</span>
+      <span class="kw">poll</span>: <span class="nu">0</span>
+      <span class="kw">changed_when</span>: <span class="kw">false</span>
+
+    <span class="kw">- name</span>: <span class="st">Tunggu nginx siap menerima koneksi</span>
+      <span class="kw">ansible.builtin.wait_for</span>:
+        <span class="kw">host</span>: <span class="st">localhost</span>
+        <span class="kw">port</span>: <span class="nu">80</span>
+        <span class="kw">timeout</span>: <span class="nu">15</span>
+
+    <span class="kw">- name</span>: <span class="st">Verifikasi nginx berjalan</span>
+      <span class="kw">ansible.builtin.shell</span>: <span class="st">curl -s http://localhost | head -5</span>
+      <span class="kw">register</span>: <span class="nm">curl_result</span>
+      <span class="kw">changed_when</span>: <span class="kw">false</span>
+
+    <span class="kw">- name</span>: <span class="st">Tampilkan hasil verifikasi</span>
+      <span class="kw">ansible.builtin.debug</span>:
+        <span class="kw">var</span>: <span class="nm">curl_result.stdout_lines</span></code></pre>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">4</div>
+          <div class="step-title">Jalankan Playbook</div>
+        </div>
+        <div class="step-body">
+          <div class="code-lang">shell</div>
+          <pre><code><span class="cm"># Masuk ke folder lab1</span>
+cd ~/ansible-docker-lab/lab1
+
+<span class="cm"># Aktifkan virtual environment (jika belum)</span>
+source ../.venv/bin/activate
+
+<span class="cm"># Tes koneksi ke container dulu</span>
+ansible -i inventory.yml webservers -m ping
+
+<span class="cm"># Jalankan playbook!</span>
+ansible-playbook -i inventory.yml playbook.yml</code></pre>
+
+          <p style="margin-top:.8rem;">Output yang diharapkan:</p>
+          <div class="code-lang">output</div>
+          <pre><code>PLAY [Setup Web Server di Container] *****************************
+
+TASK [Gathering Facts] *******************************************
+ok: [web-target]
+
+TASK [Update apt cache] ******************************************
+changed: [web-target]
+
+TASK [Install nginx] *********************************************
+changed: [web-target]
+
+TASK [Buat halaman HTML custom] **********************************
+changed: [web-target]
+
+...
+
+PLAY RECAP *******************************************************
+web-target  : ok=6  changed=4  unreachable=0  failed=0</code></pre>
+
+          <div class="alert success">
+            <span class="alert-icon">✅</span>
+            <div>Buka browser ke <strong><a href="http://localhost:8080" style="color:var(--green);" target="_blank">http://localhost:8080</a></strong> — halaman nginx custom seharusnya muncul!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">5</div>
+          <div class="step-title">Uji Idempoten — Jalankan Ulang</div>
+        </div>
+        <div class="step-body">
+          <p>Salah satu prinsip utama IAC adalah <strong>idempoten</strong>. Jalankan playbook sekali lagi:</p>
+          <div class="code-lang">shell</div>
+          <pre><code>ansible-playbook -i inventory.yml playbook.yml</code></pre>
+          <p>Perhatikan di PLAY RECAP:</p>
+          <div class="code-lang">output</div>
+          <pre><code>PLAY RECAP *******************************************************
+web-target  : ok=6  changed=0  unreachable=0  failed=0</code></pre>
+          <div class="alert success">
+            <span class="alert-icon">✅</span>
+            <div><strong><code>changed=0</code></strong> — Ansible mendeteksi bahwa nginx sudah terinstall dan konfigurasi sudah sesuai.
+            Tidak ada perubahan dilakukan! Ini adalah <strong>idempoten</strong>.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLEANUP -->
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">🧹</div>
+          <div class="step-title">Cleanup Lab 1</div>
+        </div>
+        <div class="step-body">
+          <div class="code-lang">shell</div>
+          <pre><code>docker stop web-target && docker rm web-target</code></pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       TAB: LAB 2
+  ══════════════════════════════════════════════════ -->
+  <div id="tab-lab2" class="tab-content">
+
+    <div class="section-title"><span class="num">Lab 2</span> Multi-Container — Provisioning Beberapa Server Sekaligus</div>
+
+    <div class="cards cards-3" style="margin-bottom:1.5rem; font-size:.85rem;">
+      <div class="card blue"><h4 class="blue">🎯 Tujuan</h4>Kelola 3 container sekaligus dengan group berbeda (webservers &amp; db)</div>
+      <div class="card green"><h4 class="green">⏱️ Durasi</h4>~25 menit</div>
+      <div class="card orange"><h4 class="orange">📁 Folder</h4><code>~/ansible-docker-lab/lab2/</code></div>
+    </div>
+
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <div class="step-title">Buat Container dengan Playbook (Menggunakan Modul Docker)</div>
+        </div>
+        <div class="step-body">
+          <p>Di lab ini, Ansible sendiri yang akan <strong>membuat container Docker</strong> (bukan kita yang buat manual).
+          Inilah kekuatan IAC — bahkan pembuatan infrastruktur pun diotomasi!</p>
+
+          <div class="code-lang">yaml · lab2/playbook.yml</div>
+          <pre><code><span class="kw">---</span>
+<span class="cm"># ─── PLAY 1: Buat container via Ansible ───────────────────────</span>
+<span class="kw">- name</span>: <span class="st">Provision Container Infrastructure</span>
+  <span class="kw">hosts</span>: <span class="st">localhost</span>
+  <span class="kw">connection</span>: <span class="st">local</span>
+  <span class="kw">gather_facts</span>: <span class="kw">no</span>
+
+  <span class="kw">vars</span>:
+    <span class="nm">lab_network</span>: <span class="st">lab2-network</span>
+    <span class="nm">containers</span>:
+      <span class="kw">- name</span>: <span class="st">web-1</span>
+        <span class="kw">ports</span>: <span class="st">"8081:80"</span>
+      <span class="kw">- name</span>: <span class="st">web-2</span>
+        <span class="kw">ports</span>: <span class="st">"8082:80"</span>
+      <span class="kw">- name</span>: <span class="st">db-1</span>
+        <span class="kw">ports</span>: <span class="st">"3306:3306"</span>
+
+  <span class="kw">tasks</span>:
+
+    <span class="kw">- name</span>: <span class="st">Buat Docker network</span>
+      <span class="kw">community.docker.docker_network</span>:
+        <span class="kw">name</span>: <span class="st">"{{ lab_network }}"</span>
+        <span class="kw">state</span>: <span class="st">present</span>
+
+    <span class="kw">- name</span>: <span class="st">Buat semua container Ubuntu</span>
+      <span class="kw">community.docker.docker_container</span>:
+        <span class="kw">name</span>: <span class="st">"{{ item.name }}"</span>
+        <span class="kw">image</span>: <span class="st">ubuntu:22.04</span>
+        <span class="kw">state</span>: <span class="st">started</span>
+        <span class="kw">command</span>: <span class="st">sleep infinity</span>
+        <span class="kw">networks</span>:
+          <span class="kw">- name</span>: <span class="st">"{{ lab_network }}"</span>
+        <span class="kw">published_ports</span>:
+          <span class="kw">- "{{ item.ports }}"</span>
+      <span class="kw">loop</span>: <span class="st">"{{ containers }}"</span>
+
+<span class="cm"># ─── PLAY 2: Konfigurasi web servers ──────────────────────────</span>
+<span class="kw">- name</span>: <span class="st">Configure Web Servers</span>
+  <span class="kw">hosts</span>: <span class="st">webservers</span>
+  <span class="kw">gather_facts</span>: <span class="kw">yes</span>
+
+  <span class="kw">tasks</span>:
+
+    <span class="kw">- name</span>: <span class="st">Install nginx</span>
+      <span class="kw">ansible.builtin.apt</span>:
+        <span class="kw">name</span>: <span class="st">nginx</span>
+        <span class="kw">state</span>: <span class="st">present</span>
+        <span class="kw">update_cache</span>: <span class="kw">yes</span>
+
+    <span class="kw">- name</span>: <span class="st">Deploy halaman HTML (berbeda tiap server)</span>
+      <span class="kw">ansible.builtin.copy</span>:
+        <span class="kw">content</span>: |
+          <span class="st">&lt;!DOCTYPE html&gt;</span>
+          <span class="st">&lt;html&gt;&lt;head&gt;&lt;title&gt;{{ inventory_hostname }}&lt;/title&gt;&lt;/head&gt;</span>
+          <span class="st">&lt;body style="background:#0a0f1e; color:#69f0ae; font-family:monospace; padding:2rem;"&gt;</span>
+          <span class="st">&lt;h1&gt;Server: {{ inventory_hostname }}&lt;/h1&gt;</span>
+          <span class="st">&lt;p&gt;Dikonfigurasi oleh Ansible IAC&lt;/p&gt;</span>
+          <span class="st">&lt;p&gt;IP: {{ ansible_default_ipv4.address }}&lt;/p&gt;</span>
+          <span class="st">&lt;/body&gt;&lt;/html&gt;</span>
+        <span class="kw">dest</span>: <span class="st">/var/www/html/index.html</span>
+
+    <span class="kw">- name</span>: <span class="st">Jalankan nginx</span>
+      <span class="kw">ansible.builtin.shell</span>: <span class="st">service nginx start || true</span>
+      <span class="kw">changed_when</span>: <span class="kw">false</span>
+
+<span class="cm"># ─── PLAY 3: Konfigurasi database server ──────────────────────</span>
+<span class="kw">- name</span>: <span class="st">Configure Database Server</span>
+  <span class="kw">hosts</span>: <span class="st">databases</span>
+  <span class="kw">gather_facts</span>: <span class="kw">yes</span>
+
+  <span class="kw">tasks</span>:
+
+    <span class="kw">- name</span>: <span class="st">Install MySQL client tools</span>
+      <span class="kw">ansible.builtin.apt</span>:
+        <span class="kw">name</span>:
+          <span class="kw">- mysql-server</span>
+          <span class="kw">- mysql-client</span>
+        <span class="kw">state</span>: <span class="st">present</span>
+        <span class="kw">update_cache</span>: <span class="kw">yes</span>
+
+    <span class="kw">- name</span>: <span class="st">Buat file konfigurasi MySQL</span>
+      <span class="kw">ansible.builtin.copy</span>:
+        <span class="kw">content</span>: |
+          <span class="st">[mysqld]</span>
+          <span class="st">bind-address = 0.0.0.0</span>
+          <span class="st">max_connections = 150</span>
+        <span class="kw">dest</span>: <span class="st">/etc/mysql/mysql.conf.d/lab.cnf</span>
+
+    <span class="kw">- name</span>: <span class="st">Catat info server di file</span>
+      <span class="kw">ansible.builtin.copy</span>:
+        <span class="kw">content</span>: <span class="st">"DB Server: {{ inventory_hostname }}, OS: {{ ansible_distribution }}"</span>
+        <span class="kw">dest</span>: <span class="st">/tmp/server-info.txt</span></code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <div class="step-title">Buat Inventory Multi-Group</div>
+        </div>
+        <div class="step-body">
+          <div class="code-lang">yaml · lab2/inventory.yml</div>
+          <pre><code><span class="kw">---</span>
+<span class="nm">all</span>:
+  <span class="nm">children</span>:
+    <span class="nm">webservers</span>:
+      <span class="nm">hosts</span>:
+        <span class="nm">web-1</span>:
+          <span class="nm">ansible_connection</span>: <span class="st">community.docker.docker</span>
+        <span class="nm">web-2</span>:
+          <span class="nm">ansible_connection</span>: <span class="st">community.docker.docker</span>
+    <span class="nm">databases</span>:
+      <span class="nm">hosts</span>:
+        <span class="nm">db-1</span>:
+          <span class="nm">ansible_connection</span>: <span class="st">community.docker.docker</span></code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <div class="step-title">Jalankan Playbook Multi-Container</div>
+        </div>
+        <div class="step-body">
+          <div class="code-lang">shell</div>
+          <pre><code>cd ~/ansible-docker-lab/lab2
+source ../.venv/bin/activate
+
+<span class="cm"># Jalankan! Ansible akan buat container dulu, lalu konfigurasi</span>
+ansible-playbook -i inventory.yml playbook.yml -v</code></pre>
+
+          <p style="margin-top:.8rem;">Verifikasi setelah selesai:</p>
+          <div class="code-lang">shell</div>
+          <pre><code><span class="cm"># Cek container berjalan</span>
+docker ps
+
+<span class="cm"># Cek web-1 dan web-2</span>
+curl http://localhost:8081
+curl http://localhost:8082</code></pre>
+
+          <div class="alert success">
+            <span class="alert-icon">✅</span>
+            <div>Dua web server dengan halaman berbeda-beda (menampilkan nama containernya masing-masing)
+            dikonfigurasi dalam <strong>satu kali perintah</strong> Ansible!</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">4</div>
+          <div class="step-title">Latihan: Tambah Variable</div>
+        </div>
+        <div class="step-body">
+          <p>Coba modifikasi playbook untuk menggunakan <strong>group variables</strong>:</p>
+          <div class="code-lang">yaml · tambahkan di atas tasks pada Play 2</div>
+          <pre><code>  <span class="kw">vars</span>:
+    <span class="nm">site_title</span>: <span class="st">"IAC Lab - Advanced Services"</span>
+    <span class="nm">bg_color</span>: <span class="st">"#0a0f1e"</span>
+    <span class="nm">text_color</span>: <span class="st">"#69f0ae"</span></code></pre>
+          <p>Kemudian gunakan variable <code>{{ site_title }}</code> di dalam template HTML. Jalankan ulang playbook — hanya task yang berubah yang akan dieksekusi ulang!</p>
+
+          <div class="alert warn" style="margin-top:.8rem;">
+            <span class="alert-icon">⚠️</span>
+            <div><strong>Cleanup Lab 2:</strong>
+            <pre style="margin:.5rem 0; background:transparent; border:none; padding:0;"><code>docker stop web-1 web-2 db-1
+docker rm web-1 web-2 db-1
+docker network rm lab2-network</code></pre>
+            Atau lebih elegan — buat play ke-4 di playbook untuk menghapus semua container menggunakan <code>state: absent</code>!</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       TAB: LAB 3
+  ══════════════════════════════════════════════════ -->
+  <div id="tab-lab3" class="tab-content">
+
+    <div class="section-title"><span class="num">Lab 3</span> Ansible Roles — Kode IAC yang Terstruktur & Reusable</div>
+
+    <div class="cards cards-3" style="margin-bottom:1.5rem; font-size:.85rem;">
+      <div class="card blue"><h4 class="blue">🎯 Tujuan</h4>Refactor Lab 2 menggunakan Ansible Roles agar kode lebih modular dan reusable</div>
+      <div class="card green"><h4 class="green">⏱️ Durasi</h4>~30 menit</div>
+      <div class="card purple"><h4 class="purple">🧩 Konsep Baru</h4>Roles, Handlers, Jinja2 Templates, Tags</div>
+    </div>
+
+    <div class="alert info" style="margin-bottom:1.5rem;">
+      <span class="alert-icon">💡</span>
+      <div><strong>Mengapa Roles?</strong> Ketika playbook makin kompleks, kode menjadi panjang dan sulit di-maintain.
+      Roles memecah playbook menjadi komponen-komponen terpisah yang bisa digunakan ulang di project berbeda —
+      seperti fungsi/module di programming biasa.</div>
+    </div>
+
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <div class="step-title">Buat Role: webserver</div>
+        </div>
+        <div class="step-body">
+          <div class="code-lang">yaml · lab3/roles/webserver/tasks/main.yml</div>
+          <pre><code><span class="kw">---</span>
+<span class="cm"># Tasks utama role webserver</span>
+
+<span class="kw">- name</span>: <span class="st">Install paket yang dibutuhkan</span>
+  <span class="kw">ansible.builtin.apt</span>:
+    <span class="kw">name</span>:
+      <span class="kw">- nginx</span>
+      <span class="kw">- curl</span>
+    <span class="kw">state</span>: <span class="st">present</span>
+    <span class="kw">update_cache</span>: <span class="kw">yes</span>
+  <span class="kw">tags</span>: <span class="st">install</span>
+
+<span class="kw">- name</span>: <span class="st">Deploy halaman utama dari template</span>
+  <span class="kw">ansible.builtin.template</span>:
+    <span class="kw">src</span>: <span class="st">index.html.j2</span>
+    <span class="kw">dest</span>: <span class="st">/var/www/html/index.html</span>
+    <span class="kw">mode</span>: <span class="st">'0644'</span>
+  <span class="kw">notify</span>: <span class="st">restart nginx</span>
+  <span class="kw">tags</span>: <span class="st">configure</span>
+
+<span class="kw">- name</span>: <span class="st">Pastikan nginx berjalan</span>
+  <span class="kw">ansible.builtin.shell</span>: <span class="st">service nginx start || true</span>
+  <span class="kw">changed_when</span>: <span class="kw">false</span>
+  <span class="kw">tags</span>: <span class="st">service</span>
+
+<span class="kw">- name</span>: <span class="st">Verifikasi HTTP response</span>
+  <span class="kw">ansible.builtin.uri</span>:
+    <span class="kw">url</span>: <span class="st">http://localhost</span>
+    <span class="kw">status_code</span>: <span class="nu">200</span>
+    <span class="kw">timeout</span>: <span class="nu">10</span>
+  <span class="kw">register</span>: <span class="nm">http_result</span>
+  <span class="kw">tags</span>: <span class="st">verify</span>
+
+<span class="kw">- name</span>: <span class="st">Tampilkan status HTTP</span>
+  <span class="kw">ansible.builtin.debug</span>:
+    <span class="kw">msg</span>: <span class="st">"✅ HTTP {{ http_result.status }} - {{ inventory_hostname }} OK"</span>
+  <span class="kw">tags</span>: <span class="st">verify</span></code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <div class="step-title">Buat Handler</div>
+        </div>
+        <div class="step-body">
+          <p>Handler adalah task yang <strong>hanya dijalankan ketika ada perubahan</strong> yang men-trigger <code>notify</code>:</p>
+          <div class="code-lang">yaml · lab3/roles/webserver/handlers/main.yml</div>
+          <pre><code><span class="kw">---</span>
+<span class="kw">- name</span>: <span class="st">restart nginx</span>
+  <span class="kw">ansible.builtin.shell</span>: <span class="st">service nginx restart || true</span>
+  <span class="kw">changed_when</span>: <span class="kw">false</span></code></pre>
+          <div class="alert info">
+            <span class="alert-icon">💡</span>
+            <div>Handler <code>restart nginx</code> hanya berjalan jika task <em>"Deploy halaman utama dari template"</em>
+            melakukan perubahan. Jika HTML tidak berubah, nginx tidak akan di-restart. Ini mencegah
+            downtime yang tidak perlu!</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <div class="step-title">Buat Jinja2 Template</div>
+        </div>
+        <div class="step-body">
+          <p>Template memungkinkan satu file HTML yang menghasilkan konten berbeda untuk setiap server:</p>
+          <div class="code-lang">html · lab3/roles/webserver/templates/index.html.j2</div>
+          <pre><code><span class="cm">&lt;!-- Template Jinja2: variabel ditulis {{ nama_variabel }} --&gt;</span>
+<span class="kw">&lt;!DOCTYPE html&gt;</span>
+<span class="kw">&lt;html</span> lang=<span class="st">"id"</span><span class="kw">&gt;</span>
+<span class="kw">&lt;head&gt;</span>
+  <span class="kw">&lt;meta</span> charset=<span class="st">"UTF-8"</span><span class="kw">/&gt;</span>
+  <span class="kw">&lt;title&gt;</span>{{ site_title | default('IAC Lab') }}<span class="kw">&lt;/title&gt;</span>
+  <span class="kw">&lt;style&gt;</span>
+    body { background: #0a0f1e; color: #e0e0e0; font-family: 'Segoe UI', monospace; padding: 2rem; }
+    h1 { color: #4fc3f7; }
+    .info { background: #1e2a3a; border-left: 4px solid #4fc3f7; padding: 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+    .badge { background: #4fc3f7; color: #000; padding: .2rem .6rem; border-radius: 4px; font-size: .8rem; font-weight: 700; }
+  <span class="kw">&lt;/style&gt;</span>
+<span class="kw">&lt;/head&gt;</span>
+<span class="kw">&lt;body&gt;</span>
+  <span class="kw">&lt;h1&gt;</span>🚀 {{ site_title | default('IAC Hands-On Lab 3') }}<span class="kw">&lt;/h1&gt;</span>
+  <span class="kw">&lt;div</span> class=<span class="st">"info"</span><span class="kw">&gt;</span>
+    <span class="kw">&lt;p&gt;</span><span class="kw">&lt;span</span> class=<span class="st">"badge"</span><span class="kw">&gt;</span>ANSIBLE IAC<span class="kw">&lt;/span&gt;</span> Server ini dikonfigurasi secara otomatis<span class="kw">&lt;/p&gt;</span>
+    <span class="kw">&lt;p&gt;</span>🖥️ Hostname: <span class="kw">&lt;strong&gt;</span>{{ inventory_hostname }}<span class="kw">&lt;/strong&gt;&lt;/p&gt;</span>
+    <span class="kw">&lt;p&gt;</span>🐧 OS: {{ ansible_distribution }} {{ ansible_distribution_version }}<span class="kw">&lt;/p&gt;</span>
+    <span class="kw">&lt;p&gt;</span>🌐 IP: {{ ansible_default_ipv4.address | default('N/A') }}<span class="kw">&lt;/p&gt;</span>
+    <span class="kw">&lt;p&gt;</span>⏰ Dikonfigurasi: {{ ansible_date_time.iso8601 | default('N/A') }}<span class="kw">&lt;/p&gt;</span>
+  <span class="kw">&lt;/div&gt;</span>
+  <span class="kw">&lt;p</span> style=<span class="st">"color:#9e9e9e; font-size:.8rem;"</span><span class="kw">&gt;</span>
+    Matakuliah Advanced Services — Universitas Brawijaya
+  <span class="kw">&lt;/p&gt;</span>
+<span class="kw">&lt;/body&gt;</span>
+<span class="kw">&lt;/html&gt;</span></code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">4</div>
+          <div class="step-title">Buat Site Playbook &amp; Inventory</div>
+        </div>
+        <div class="step-body">
+          <div class="code-lang">yaml · lab3/site.yml</div>
+          <pre><code><span class="kw">---</span>
+<span class="cm"># ─── PLAY 1: Buat container ───────────────────────────────────</span>
+<span class="kw">- name</span>: <span class="st">Provision Lab Infrastructure</span>
+  <span class="kw">hosts</span>: <span class="st">localhost</span>
+  <span class="kw">connection</span>: <span class="st">local</span>
+  <span class="kw">gather_facts</span>: <span class="kw">no</span>
+
+  <span class="kw">tasks</span>:
+    <span class="kw">- name</span>: <span class="st">Buat network lab3</span>
+      <span class="kw">community.docker.docker_network</span>:
+        <span class="kw">name</span>: <span class="st">lab3-network</span>
+        <span class="kw">state</span>: <span class="st">present</span>
+
+    <span class="kw">- name</span>: <span class="st">Buat container web servers</span>
+      <span class="kw">community.docker.docker_container</span>:
+        <span class="kw">name</span>: <span class="st">"web-{{ item.id }}"</span>
+        <span class="kw">image</span>: <span class="st">ubuntu:22.04</span>
+        <span class="kw">state</span>: <span class="st">started</span>
+        <span class="kw">command</span>: <span class="st">sleep infinity</span>
+        <span class="kw">networks</span>:
+          <span class="kw">- name</span>: <span class="st">lab3-network</span>
+        <span class="kw">published_ports</span>:
+          <span class="kw">- "808{{ item.id }}:80"</span>
+      <span class="kw">loop</span>:
+        <span class="kw">- { id: "1" }</span>
+        <span class="kw">- { id: "2" }</span>
+        <span class="kw">- { id: "3" }</span>
+
+<span class="cm"># ─── PLAY 2: Terapkan role webserver ──────────────────────────</span>
+<span class="kw">- name</span>: <span class="st">Configure All Web Servers</span>
+  <span class="kw">hosts</span>: <span class="st">webservers</span>
+  <span class="kw">gather_facts</span>: <span class="kw">yes</span>
+
+  <span class="kw">vars</span>:
+    <span class="nm">site_title</span>: <span class="st">"Advanced Services — IAC Lab 3"</span>
+
+  <span class="kw">roles</span>:
+    <span class="kw">- role</span>: <span class="st">webserver</span>
+      <span class="cm"># Satu baris ini menggantikan semua tasks yang panjang!</span></code></pre>
+
+          <div class="code-lang">yaml · lab3/inventory.yml</div>
+          <pre><code><span class="kw">---</span>
+<span class="nm">all</span>:
+  <span class="nm">children</span>:
+    <span class="nm">webservers</span>:
+      <span class="nm">hosts</span>:
+        <span class="nm">web-1</span>: { <span class="nm">ansible_connection</span>: <span class="st">community.docker.docker</span> }
+        <span class="nm">web-2</span>: { <span class="nm">ansible_connection</span>: <span class="st">community.docker.docker</span> }
+        <span class="nm">web-3</span>: { <span class="nm">ansible_connection</span>: <span class="st">community.docker.docker</span> }</code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">5</div>
+          <div class="step-title">Jalankan &amp; Eksplorasi Tags</div>
+        </div>
+        <div class="step-body">
+          <div class="code-lang">shell</div>
+          <pre><code>cd ~/ansible-docker-lab/lab3
+source ../.venv/bin/activate
+
+<span class="cm"># Jalankan full playbook</span>
+ansible-playbook -i inventory.yml site.yml
+
+<span class="cm"># Cek hasilnya</span>
+curl http://localhost:8081
+curl http://localhost:8082
+curl http://localhost:8083
+
+<span class="cm"># Jalankan hanya task dengan tag 'configure' (tanpa install ulang)</span>
+ansible-playbook -i inventory.yml site.yml --tags configure
+
+<span class="cm"># Jalankan hanya task verify</span>
+ansible-playbook -i inventory.yml site.yml --tags verify
+
+<span class="cm"># Lihat semua tags yang tersedia</span>
+ansible-playbook -i inventory.yml site.yml --list-tags</code></pre>
+
+          <div class="alert success">
+            <span class="alert-icon">✅</span>
+            <div><strong>Tags = Deployment Cerdas!</strong> Bayangkan production dengan 50 tasks.
+            Dengan tags, Anda hanya menjalankan tasks yang relevan dengan perubahan Anda,
+            menghemat waktu deployment secara drastis.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-header">
+          <div class="step-num">🏆</div>
+          <div class="step-title">Tantangan Lanjutan (Opsional)</div>
+        </div>
+        <div class="step-body">
+          <div class="cards cards-2">
+            <div class="card blue">
+              <h4 class="blue">🎯 Tantangan 1: Role Variables</h4>
+              Tambahkan file <code>roles/webserver/defaults/main.yml</code> dengan default variable
+              <code>site_title</code> dan <code>admin_email</code>. Override di <code>site.yml</code>.
+            </div>
+            <div class="card purple">
+              <h4 class="purple">🎯 Tantangan 2: Kondisional</h4>
+              Tambahkan task yang membuat file <code>/var/www/html/health.txt</code>
+              berisi status server, dan tambahkan task verifikasi menggunakan
+              <code>ansible.builtin.assert</code>.
+            </div>
+            <div class="card orange">
+              <h4 class="orange">🎯 Tantangan 3: Cleanup Role</h4>
+              Buat play ke-3 di <code>site.yml</code> yang menghapus semua container menggunakan
+              <code>community.docker.docker_container</code> dengan <code>state: absent</code>.
+              Jalankan dengan <code>--tags teardown</code>.
+            </div>
+            <div class="card green">
+              <h4 class="green">🎯 Tantangan 4: Ansible Vault</h4>
+              Buat file variabel terenkripsi untuk menyimpan "password" database:
+              <code>ansible-vault create secrets.yml</code>. Gunakan variabel tersebut di playbook.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       TAB: REFERENSI
+  ══════════════════════════════════════════════════ -->
+  <div id="tab-referensi" class="tab-content">
+
+    <div class="section-title"><span class="num">📚</span> Referensi &amp; Sumber Belajar Lanjutan</div>
+
+    <div class="cards cards-2">
+      <div class="card blue">
+        <h4 class="blue">📖 Dokumentasi Resmi</h4>
+        <ul>
+          <li><a href="https://docs.ansible.com" style="color:var(--blue);" target="_blank">docs.ansible.com</a> — Ansible official docs</li>
+          <li><a href="https://docs.ansible.com/ansible/latest/collections/community/docker/" style="color:var(--blue);" target="_blank">community.docker collection</a></li>
+          <li><a href="https://docs.docker.com" style="color:var(--blue);" target="_blank">docs.docker.com</a> — Docker official docs</li>
+          <li><a href="https://kubernetes.io/docs" style="color:var(--blue);" target="_blank">kubernetes.io/docs</a> — Kubernetes docs</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h4 class="green">🎓 Modul Ansible Penting</h4>
+        <ul>
+          <li><code>ansible.builtin.apt</code> — Install paket Debian/Ubuntu</li>
+          <li><code>ansible.builtin.copy</code> — Copy file ke target</li>
+          <li><code>ansible.builtin.template</code> — Deploy Jinja2 template</li>
+          <li><code>ansible.builtin.service</code> — Kelola systemd services</li>
+          <li><code>ansible.builtin.user</code> — Manajemen user OS</li>
+          <li><code>ansible.builtin.file</code> — Buat/hapus file & direktori</li>
+          <li><code>community.docker.docker_container</code> — Kelola container</li>
+        </ul>
+      </div>
+      <div class="card orange">
+        <h4 class="orange">🛠️ Tools Lanjutan</h4>
+        <ul>
+          <li><strong>Ansible Tower / AWX</strong> — Web UI untuk Ansible</li>
+          <li><strong>Molecule</strong> — Testing framework untuk Ansible roles</li>
+          <li><strong>ansible-lint</strong> — Linter untuk playbook YAML</li>
+          <li><strong>Ansible Navigator</strong> — TUI modern untuk menjalankan playbook</li>
+          <li><strong>Semaphore</strong> — Open-source Ansible UI</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <h4 class="purple">🗺️ Jalur Belajar Selanjutnya</h4>
+        <ul>
+          <li>Ansible + Terraform (provisioning + config)</li>
+          <li>Ansible dalam CI/CD pipeline (GitHub Actions)</li>
+          <li>Ansible untuk deploy ke Kubernetes</li>
+          <li>Ansible Vault untuk secrets management</li>
+          <li>Dynamic Inventory (AWS, GCP, Azure)</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="fancy">
+
+    <div class="section-title"><span class="num">🆚</span> Ringkasan Perbandingan Cepat</div>
+
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th>Tool</th>
+          <th>Fungsi Utama</th>
+          <th>Kapan Pakai</th>
+          <th>Skill Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:var(--green)">⚙️ Ansible</strong></td>
+          <td>Konfigurasi server, deploy aplikasi</td>
+          <td>Setup OS, install packages, deploy ke server existing</td>
+          <td>🟢 Pemula bisa mulai dalam 1 hari</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--purple)">🏗️ Terraform</strong></td>
+          <td>Provisioning infrastruktur cloud</td>
+          <td>Buat VM, network, storage di AWS/GCP/Azure</td>
+          <td>🟡 Menengah — butuh paham cloud provider</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--blue)">🐳 Docker Compose</strong></td>
+          <td>Jalankan multi-container di 1 host</td>
+          <td>Development local, staging sederhana</td>
+          <td>🟢 Pemula bisa mulai dalam beberapa jam</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--orange)">☸️ Kubernetes</strong></td>
+          <td>Orkestrasi container di production cluster</td>
+          <td>Production workload yang butuh HA, auto-scaling</td>
+          <td>🔴 Lanjutan — ekosistem sangat besar</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--purple)">🔒 Chef / Puppet</strong></td>
+          <td>Config management (pull model)</td>
+          <td>Enterprise, legacy environment, self-healing</td>
+          <td>🔴 Lanjutan — Ruby DSL, agent setup rumit</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert success" style="margin-top:1.5rem;">
+      <span class="alert-icon">🎉</span>
+      <div>
+        <strong>Selamat menyelesaikan Hands-On IAC dengan Ansible + Docker!</strong><br>
+        Anda telah mempraktikkan: inventory, playbook, idempoten, multi-host management,
+        roles, handlers, dan Jinja2 templates — fondasi utama IAC dengan Ansible.
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  function showTab(id) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function showOS(os) {
+    document.querySelectorAll('.os-panel').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.os-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('os-' + os).classList.add('active');
+    event.target.classList.add('active');
+  }
+</script>
+</body>
+</html>
