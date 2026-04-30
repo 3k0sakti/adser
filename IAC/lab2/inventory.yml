@@ -1,0 +1,16 @@
+---
+# Ansible Inventory - Lab 2
+# Tiga container: 2 webserver + 1 database
+
+all:
+  children:
+    webservers:
+      hosts:
+        web-1:
+          ansible_connection: community.docker.docker
+        web-2:
+          ansible_connection: community.docker.docker
+    databases:
+      hosts:
+        db-1:
+          ansible_connection: community.docker.docker
