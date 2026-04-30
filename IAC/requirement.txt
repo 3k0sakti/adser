@@ -1,0 +1,6 @@
+# Ansible Docker Lab — Dependencies
+# Install dengan: pip install -r requirements.txt
+
+ansible>=2.15.0
+docker>=6.1.0
+requests>=2.31.0
