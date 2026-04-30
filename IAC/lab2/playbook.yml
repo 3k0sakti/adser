@@ -1,0 +1,171 @@
+---
+# ══════════════════════════════════════════════════════════════
+# LAB 2 — Multi-Container Provisioning
+# Matakuliah Advanced Services | Universitas Brawijaya
+# ══════════════════════════════════════════════════════════════
+#
+# CARA MENJALANKAN:
+#   1. Aktifkan venv: source ../.venv/bin/activate
+#   2. Jalankan: ansible-playbook -i inventory.yml playbook.yml
+#   3. Verifikasi:
+#      curl http://localhost:8081
+#      curl http://localhost:8082
+#   4. Cleanup:
+#      docker stop web-1 web-2 db-1 && docker rm web-1 web-2 db-1
+#      docker network rm lab2-network
+#
+# ══════════════════════════════════════════════════════════════
+
+# ─── PLAY 1: Buat container via Ansible ─────────────────────────
+- name: Provision Container Infrastructure
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    lab_network: lab2-network
+    containers:
+      - name: web-1
+        ports: "8081:80"
+      - name: web-2
+        ports: "8082:80"
+      - name: db-1
+        ports: "3306:3306"
+
+  tasks:
+
+    - name: Buat Docker network lab2
+      community.docker.docker_network:
+        name: "{{ lab_network }}"
+        state: present
+
+    - name: Buat container Ubuntu untuk semua node
+      community.docker.docker_container:
+        name: "{{ item.name }}"
+        image: ubuntu:22.04
+        state: started
+        command: sleep infinity
+        restart_policy: unless-stopped
+        networks:
+          - name: "{{ lab_network }}"
+        published_ports:
+          - "{{ item.ports }}"
+      loop: "{{ containers }}"
+
+    - name: Tunggu container siap
+      ansible.builtin.pause:
+        seconds: 3
+
+# ─── PLAY 2: Konfigurasi Web Servers ────────────────────────────
+- name: Configure Web Servers
+  hosts: webservers
+  gather_facts: yes
+
+  vars:
+    site_title: "IAC Lab 2 — Multi-Server"
+    bg_color: "#0a0f1e"
+    accent_color: "#69f0ae"
+
+  tasks:
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Deploy halaman HTML (unik per server)
+      ansible.builtin.copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>{{ site_title }}</title>
+            <style>
+              body { background: {{ bg_color }}; color: #e0e0e0; font-family: monospace; padding: 2rem; }
+              h1 { color: {{ accent_color }}; }
+              .info { background: #1e2a3a; border-left: 4px solid {{ accent_color }};
+                      padding: 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+              .badge { background: {{ accent_color }}; color: #000; padding: .2rem .6rem;
+                       border-radius: 4px; font-size: .8rem; font-weight: 700; }
+            </style>
+          </head>
+          <body>
+            <h1>🌐 {{ site_title }}</h1>
+            <div class="info">
+              <p><span class="badge">ANSIBLE IAC</span> Dikonfigurasi secara otomatis</p>
+              <p>🖥️ Server: <strong>{{ inventory_hostname }}</strong></p>
+              <p>🐧 OS: {{ ansible_distribution }} {{ ansible_distribution_version }}</p>
+              <p>🌐 IP: {{ ansible_default_ipv4.address | default('N/A') }}</p>
+            </div>
+          </body>
+          </html>
+        dest: /var/www/html/index.html
+        mode: '0644'
+
+    - name: Start nginx
+      ansible.builtin.shell: service nginx start || true
+      changed_when: false
+
+    - name: Verifikasi nginx berjalan
+      ansible.builtin.uri:
+        url: http://localhost
+        status_code: 200
+      register: result
+
+    - name: Tampilkan status
+      ansible.builtin.debug:
+        msg: "✅ {{ inventory_hostname }} — HTTP {{ result.status }}"
+
+# ─── PLAY 3: Konfigurasi Database Server ────────────────────────
+- name: Configure Database Server
+  hosts: databases
+  gather_facts: yes
+
+  tasks:
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install MySQL server
+      ansible.builtin.apt:
+        name:
+          - mysql-server
+          - mysql-client
+        state: present
+
+    - name: Buat konfigurasi MySQL custom
+      ansible.builtin.copy:
+        content: |
+          [mysqld]
+          # Konfigurasi dibuat otomatis oleh Ansible IAC
+          bind-address = 0.0.0.0
+          max_connections = 150
+          character-set-server = utf8mb4
+          collation-server = utf8mb4_unicode_ci
+
+          [client]
+          default-character-set = utf8mb4
+        dest: /etc/mysql/mysql.conf.d/lab-custom.cnf
+        mode: '0644'
+
+    - name: Catat informasi server
+      ansible.builtin.copy:
+        content: |
+          DB Server Info
+          ===============
+          Hostname  : {{ inventory_hostname }}
+          OS        : {{ ansible_distribution }} {{ ansible_distribution_version }}
+          IP        : {{ ansible_default_ipv4.address | default('N/A') }}
+          Config by : Ansible IAC Lab 2
+        dest: /tmp/server-info.txt
+
+    - name: Tampilkan info database server
+      ansible.builtin.debug:
+        msg: "✅ {{ inventory_hostname }} — MySQL installed, config deployed"
