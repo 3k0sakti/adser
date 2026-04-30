@@ -1,0 +1,82 @@
+---
+# ══════════════════════════════════════════════════════════════
+# LAB 3 — Ansible Roles
+# Matakuliah Advanced Services | Universitas Brawijaya
+# ══════════════════════════════════════════════════════════════
+#
+# CARA MENJALANKAN:
+#   1. Aktifkan venv: source ../.venv/bin/activate
+#   2. Full deploy:    ansible-playbook -i inventory.yml site.yml
+#   3. Hanya config:  ansible-playbook -i inventory.yml site.yml --tags configure
+#   4. Hanya verify:  ansible-playbook -i inventory.yml site.yml --tags verify
+#   5. List semua tag: ansible-playbook -i inventory.yml site.yml --list-tags
+#
+# ══════════════════════════════════════════════════════════════
+
+# ─── PLAY 1: Provision containers ───────────────────────────────
+- name: Provision Lab 3 Infrastructure
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  tasks:
+
+    - name: Buat Docker network lab3
+      community.docker.docker_network:
+        name: lab3-network
+        state: present
+
+    - name: Buat 3 container web server
+      community.docker.docker_container:
+        name: "web-{{ item.id }}"
+        image: ubuntu:22.04
+        state: started
+        command: sleep infinity
+        restart_policy: unless-stopped
+        networks:
+          - name: lab3-network
+        published_ports:
+          - "808{{ item.id }}:80"
+      loop:
+        - { id: "1" }
+        - { id: "2" }
+        - { id: "3" }
+
+    - name: Tunggu container siap
+      ansible.builtin.pause:
+        seconds: 3
+
+# ─── PLAY 2: Apply webserver role ke semua server ───────────────
+- name: Configure All Web Servers via Role
+  hosts: webservers
+  gather_facts: yes
+
+  vars:
+    site_title: "Advanced Services — IAC Lab 3"
+    # Override variabel default dari role
+
+  roles:
+    - role: webserver
+      # Satu baris ini menggantikan semua task yang panjang!
+      # Role di-load dari: roles/webserver/
+
+# ─── PLAY 3 (OPSIONAL): Teardown semua container ────────────────
+# Uncomment dan jalankan dengan: --tags teardown
+#
+# - name: Teardown Lab 3 Infrastructure
+#   hosts: localhost
+#   connection: local
+#   gather_facts: no
+#   tags: teardown
+#
+#   tasks:
+#     - name: Stop dan hapus container
+#       community.docker.docker_container:
+#         name: "web-{{ item }}"
+#         state: absent
+#       loop: ["1", "2", "3"]
+#
+#     - name: Hapus network
+#       community.docker.docker_network:
+#         name: lab3-network
+#         state: absent
