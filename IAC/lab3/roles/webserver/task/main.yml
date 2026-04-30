@@ -1,0 +1,40 @@
+---
+# ══════════════════════════════════════════════════════════════
+# Role: webserver
+# Tasks utama
+# ══════════════════════════════════════════════════════════════
+
+- name: Install paket yang dibutuhkan
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - curl
+    state: present
+    update_cache: yes
+  tags: install
+
+- name: Deploy halaman utama dari Jinja2 template
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    mode: '0644'
+  notify: restart nginx
+  tags: configure
+
+- name: Pastikan nginx berjalan
+  ansible.builtin.shell: service nginx start || true
+  changed_when: false
+  tags: service
+
+- name: Verifikasi HTTP response 200
+  ansible.builtin.uri:
+    url: http://localhost
+    status_code: 200
+    timeout: 10
+  register: http_result
+  tags: verify
+
+- name: Tampilkan status verifikasi
+  ansible.builtin.debug:
+    msg: "✅ HTTP {{ http_result.status }} — {{ inventory_hostname }} OK"
+  tags: verify
