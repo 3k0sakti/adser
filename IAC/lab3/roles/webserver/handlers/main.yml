@@ -1,0 +1,7 @@
+---
+# Handler: hanya dijalankan jika ada task yang men-trigger 'notify: restart nginx'
+# Contoh: task "Deploy halaman utama dari Jinja2 template" melakukan perubahan
+
+- name: restart nginx
+  ansible.builtin.shell: service nginx restart || true
+  changed_when: false
